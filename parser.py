@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import sly
 
 import tree
@@ -55,10 +57,11 @@ class Parser(sly.Parser):
 
     precedence = (
         ('left', PLUS, MINUS),
-        ('left', IMPMUL),
+        # ('left', IMPMUL),
         ('right', TIMES, DIVIDE),
-        ('right', UMINUS),
         ('right', POW),
+        ('left', UMINUS),
+
     )
 
     # Grammar rules and actions
@@ -102,6 +105,10 @@ class Parser(sly.Parser):
     def expr(self, p):
         return p.wildcard
 
+    @_('exprblock')
+    def expr(self, p):
+        return p.exprblock
+
     @_('NUMBER')
     def number(self, p):
         return tree.Value(float(p.NUMBER))
@@ -114,10 +121,28 @@ class Parser(sly.Parser):
     def wildcard(self, _p):
         return tree.Wildcard()
 
-    @_('number expr %prec IMPMUL')
-    def expr(self, p):
-        return tree.Mul(p.number, p.expr)
+    # @_('number expr %prec IMPMUL')
+    # def expr(self, p):
+    #     return tree.Mul(p.number, p.expr)
+    #
+    # @_('expr exprblock %prec IMPMUL')
+    # def expr(self, p):
+    #     return tree.Mul(p.expr, p.exprblock)
 
     @_('LPAREN expr RPAREN')
-    def expr(self, p):
+    def exprblock(self, p):
         return p.expr
+
+
+_lexer = Lexer()
+_parser = Parser()
+
+
+def parse(text: str) -> Optional[tree.Node]:
+    if not text:
+        return None
+
+    return _parser.parse(_lexer.tokenize(text))
+
+
+__all__ = ["parse"]

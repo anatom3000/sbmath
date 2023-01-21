@@ -1,13 +1,20 @@
-from parser import Lexer, Parser
+import sly
+
+from parser import parse
 
 if __name__ == '__main__':
-    lexer = Lexer()
-    parser = Parser()
-
     while True:
+
         try:
-            text = input('sbm% ')
-            result = parser.parse(lexer.tokenize(text))
-            print(result)
-        except EOFError:
-            break
+            expr = parse(input("E: "))
+            print(" =>", expr)
+            pat = parse(input("P: "))
+            print(" =>", pat)
+        except sly.lex.LexError:
+            expr = pat = None
+
+        if expr is None or pat is None:
+            print(" => Something went wrong...")
+            continue
+
+        print(" => Matches:", pat.matches(expr))

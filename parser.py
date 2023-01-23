@@ -5,6 +5,10 @@ import sly
 import tree
 
 
+class ParsingError(Exception):
+    pass
+
+
 # noinspection PyUnboundLocalVariable
 class Lexer(sly.Lexer):
     tokens = {
@@ -44,20 +48,11 @@ class Parser(sly.Parser):
     # Get the token list from the lexer (required)
     tokens = Lexer.tokens
 
-    debugfile = 'parser.out'
-
-    # tokens = {
-    #         IDENT, NUMBER,
-    #         PLUS, MINUS,
-    #         POW,
-    #         TIMES, DIVIDE,
-    #         LPAREN, RPAREN,
-    #         LBRACK, RBRACK,
-    #     }
+    # debugfile = 'parser.out'
 
     precedence = (
         ('left', PLUS, MINUS),
-        # ('left', IMPMUL),
+        ('left', IMPMUL),
         ('right', TIMES, DIVIDE),
         ('right', POW),
         ('left', UMINUS),
@@ -67,11 +62,11 @@ class Parser(sly.Parser):
     # Grammar rules and actions
     @_('expr PLUS expr')
     def expr(self, p):
-        return tree.Add(p.expr0, p.expr1)
+        return tree.AddAndSub.add(p.expr0, p.expr1)
 
     @_('expr MINUS expr')
     def expr(self, p):
-        return tree.Sub(p.expr0, p.expr1)
+        return tree.AddAndSub.sub(p.expr0, p.expr1)
 
     @_('expr TIMES expr')
     def expr(self, p):
@@ -87,7 +82,7 @@ class Parser(sly.Parser):
 
     @_('MINUS expr %prec UMINUS')
     def expr(self, p):
-        return tree.Sub(p.expr0, p.expr1)
+        return tree.Mul(tree.Value(-1.0), p.expr)
 
     @_('PLUS expr %prec UMINUS')
     def expr(self, p):
@@ -117,32 +112,51 @@ class Parser(sly.Parser):
     def ident(self, p):
         return tree.Variable(p.IDENT)
 
-    @_('LBRACK RBRACK')
-    def wildcard(self, _p):
-        return tree.Wildcard()
+    @_('LBRACK IDENT RBRACK')
+    def wildcard(self, p):
+        return tree.Wildcard(p.IDENT)
 
     # @_('number expr %prec IMPMUL')
     # def expr(self, p):
     #     return tree.Mul(p.number, p.expr)
     #
-    # @_('expr exprblock %prec IMPMUL')
-    # def expr(self, p):
-    #     return tree.Mul(p.expr, p.exprblock)
+    @_('exprblock exprblock %prec IMPMUL')
+    def expr(self, p):
+        return tree.Mul(p.exprblock0, p.exprblock1)
+
+    @_('number ident %prec IMPMUL')
+    def expr(self, p):
+        return tree.Mul(p.number, p.ident)
+
+    @_('number wildcard %prec IMPMUL')
+    def expr(self, p):
+        return tree.Mul(p.number, p.wildcard)
+
+    @_('number exprblock %prec IMPMUL')
+    def expr(self, p):
+        return tree.Mul(p.number, p.exprblock)
 
     @_('LPAREN expr RPAREN')
     def exprblock(self, p):
         return p.expr
 
-
 _lexer = Lexer()
 _parser = Parser()
 
 
-def parse(text: str) -> Optional[tree.Node]:
-    if not text:
+def parse(data: str | tree.Numerics) -> Optional[tree.Node]:
+    if isinstance(data, tree.Numerics):
+        return tree.Value(float(data))
+
+    if not data:
         return None
 
-    return _parser.parse(_lexer.tokenize(text))
+    result = _parser.parse(_lexer.tokenize(data))
+
+    if not isinstance(result, tree.Node):
+        raise ParsingError(f"parser returned {repr(result)} of type {type(result).__name__}, expected type Node")
+
+    return result
 
 
 __all__ = ["parse"]

@@ -3,14 +3,15 @@ import sly
 from parser import parse
 
 if __name__ == '__main__':
-    while True:
+    a = True
+    while a:
 
         try:
             expr = parse(input("E: "))
             print(" =>", expr)
             pat = parse(input("P: "))
             print(" =>", pat)
-        except sly.lex.LexError:
+        except parse.ParsingError:
             expr = pat = None
 
         if expr is None or pat is None:

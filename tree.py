@@ -1,47 +1,51 @@
 from __future__ import annotations
 
-import itertools
 from abc import ABC, abstractmethod
-from collections.abc import Callable
+from collections.abc import Sequence
 
 Numerics = (float, int)
 
+
 class Node(ABC):
-    def __add__(self, other):
+    def __add__(self, other) -> Node:
         if isinstance(other, Numerics):
-            return self + Value(other)
+            return self + Value(float(other))
         elif isinstance(other, Node):
-            return Add(self, other)
+            return AddAndSub.add(self, other)
         else:
             return NotImplemented
 
-    def __sub__(self, other):
+    __radd__ = __add__
+
+    def __sub__(self, other) -> Node:
         if isinstance(other, Numerics):
-            return self - Value(other)
+            return self - Value(float(other))
         elif isinstance(other, Node):
-            return Sub(self, other)
+            return AddAndSub.sub(self, other)
         else:
             return NotImplemented
 
-    def __mul__(self, other):
+    __rsub__ = __sub__
+
+    def __mul__(self, other) -> Node:
         if isinstance(other, Numerics):
-            return self * Value(other)
+            return self * Value(float(other))
         elif isinstance(other, Node):
             return Mul(self, other)
         else:
             return NotImplemented
 
-    def __truediv__(self, other):
+    def __truediv__(self, other) -> Node:
         if isinstance(other, Numerics):
-            return self / Value(other)
+            return self / Value(float(other))
         elif isinstance(other, Node):
             return Div(self, other)
         else:
             return NotImplemented
 
-    def __pow__(self, other):
+    def __pow__(self, other) -> Node:
         if isinstance(other, Numerics):
-            return self ** Value(other)
+            return self ** Value(float(other))
         elif isinstance(other, Node):
             return Pow(self, other)
         else:
@@ -69,10 +73,13 @@ class Node(ABC):
     def evaluate(self) -> float:
         pass
 
-    def matches(self, value: Node) -> bool:
-        return type(value) == type(self) \
-            and len(self.children) == len(value.children) \
-            and all(sc.matches(vc) for sc, vc in zip(self.children, value.children))
+    def replace(self, pattern: Node, value: Node):
+        pass
+
+    def contains(self, node: Node):
+        return any(c.contains(node) for c in self.children)
+
+    __contains__ = contains
 
 
 class Leaf(Node, ABC):
@@ -80,8 +87,8 @@ class Leaf(Node, ABC):
     def is_evaluatable(self) -> bool:
         pass
 
-    def matches(self, value: Node) -> bool:
-        return type(value) == type(self) and value.data == self.data
+    def contains(self, node: Node):
+        return self.data == node.evaluate()
 
     def __init__(self, data):
         super().__init__()
@@ -89,20 +96,6 @@ class Leaf(Node, ABC):
 
     def __str__(self) -> str:
         return f"{self.__class__.__name__}({self.data if self.data is not None else ''})"
-
-
-class BinOp(Node, ABC):
-    evaluator: Callable[[float], float]
-    name: str
-
-    def evaluate(self) -> float:
-        if not self.is_evaluatable():
-            raise ValueError("cannot evaluate expression")
-
-        return self.evaluator(*(v.data for v in self.children))
-
-    def __str__(self):
-        return '( ' + f' {self.name} '.join(map(lambda x: str(x), self.children)) + ' )'
 
 
 class Value(Leaf):
@@ -128,60 +121,99 @@ class Wildcard(Leaf):
     def evaluate(self) -> float:
         raise TypeError("can't evaluate a wildcard")
 
-    def __init__(self):
+    def __str__(self):
+        return f"[{self.name}]"
+
+    def __init__(self, name: str):
         super().__init__(None)
-
-    def matches(self, value: Node) -> bool:
-        return True
+        self.name = name
 
 
-class Add(BinOp):
-    name = "+"
-    evaluator = sum
-
-    def matches(self, value: Node) -> bool:
-        if not isinstance(value, Add):
-            return False
-
-        contains_wildcard = any(isinstance(c, Wildcard) for c in self.children)
-
-        self_children_count = len(self.children)
-        value_children_count = len(value.children)
-
-        if self_children_count == value_children_count:
-            return any(all(sc.matches(vc) for sc, vc in zip(self.children, children))  # type: ignore
-                       for children in itertools.permutations(value.children))
-
-        if self_children_count < value_children_count and contains_wildcard:
-            wildcard_capture_size = value_children_count - self_children_count
-
-            for children in itertools.permutations(value.children):
-                children = (Add(*children[:wildcard_capture_size]), *children[wildcard_capture_size:])
-                if all(sc.matches(vc) for sc, vc in zip(self.children, children)):
-                    return True
-
-        return False
-
-
-class Sub(BinOp):
-    name = '-'
+class BinOp(Node, ABC):
+    name: str
 
     @staticmethod
-    def evaluator(*values: float):
-        result = values[0]
-        for v in values[1:]:
-            result -= v
+    @abstractmethod
+    def evaluator(*values: float) -> float:
+        pass
+
+    def evaluate(self) -> float:
+        if not self.is_evaluatable():
+            raise ValueError("cannot evaluate expression")
+
+        return self.evaluator(*(v.evaluate() for v in self.children))
+
+    def __str__(self):
+        return '( ' + f' {self.name} '.join(map(lambda x: str(x), self.children)) + ' )'
+
+
+class AddAndSub(Node):
+    name = "+"
+
+    def __str__(self):
+        text = '( '
+
+        text += ' + '.join(map(str, self.added_values))
+
+        if self.substracted_values:
+            text += ' - ' if self.added_values else '- '
+
+        text += ' - '.join(map(str, self.substracted_values))
+
+        return text + ' )'
+
+    def __init__(self, added_values: Sequence[Node] = None, substracted_values: Sequence[Node] = None):
+        self.added_values = []
+        self.substracted_values = []
+
+        if added_values is not None:
+            for val in added_values:
+                if isinstance(val, AddAndSub):
+                    self.added_values.extend(val.added_values)
+                    self.substracted_values.extend(val.substracted_values)
+                else:
+                    self.added_values.append(val)
+
+        if substracted_values is not None:
+            for val in substracted_values:
+                if isinstance(val, AddAndSub):
+                    self.substracted_values.extend(val.added_values)
+                    self.added_values.extend(val.substracted_values)
+                else:
+                    self.substracted_values.append(val)
+
+
+
+        super().__init__(*self.added_values, *self.substracted_values)
+
+    @classmethod
+    def add(cls, *values: Node):
+        return cls(values)
+
+    @classmethod
+    def sub(cls, *values: Node, positive_first_node: bool = True):
+        if positive_first_node:
+            return cls(added_values=values[:1], substracted_values=values[1:])
+        else:
+            return cls(substracted_values=values)
+
+    def evaluate(self) -> float:
+        result = 0
+        for c in self.added_values:
+            result += c.evaluate()
+        for c in self.substracted_values:
+            result -= c.evaluate()
+
         return result
 
 
+# TODO: merge Mul and Div into a single object (see AddAndMul)
 class Mul(BinOp):
     name = '*'
 
-    def matches(self, value: Node) -> bool:
-        raise NotImplementedError("Mul.matches")  # TODO: copy code from Add.matches() when polished enough
-
     @staticmethod
-    def evaluator(*values: float):
+    def evaluator(*values: float) -> float:
+        print("ev mul", values)
         result = 1
         for v in values:
             result *= v
@@ -192,7 +224,7 @@ class Div(BinOp):
     name = '/'
 
     @staticmethod
-    def evaluator(*values: float):
+    def evaluator(*values: float) -> float:
         result = 1
         for v in values:
             result *= v
@@ -203,7 +235,7 @@ class Pow(BinOp):
     name = '^'
 
     @staticmethod
-    def evaluator(*values: float):
+    def evaluator(*values: float) -> float:
         result = 1
         for v in values[:-1]:
             result = v ** result

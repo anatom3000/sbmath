@@ -3,7 +3,7 @@ import sly
 from parser import parse
 
 if __name__ == '__main__':
-    a = True
+    a = False
     while a:
 
         try:
@@ -18,4 +18,4 @@ if __name__ == '__main__':
             print(" => Something went wrong...")
             continue
 
-        print(" => Matches:", pat.matches(expr))
+        print(" => Matches:", False)  # pat.matches(expr))

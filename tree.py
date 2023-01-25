@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import itertools
 from abc import ABC, abstractmethod
 from collections.abc import Sequence
+from dataclasses import dataclass
 
 Numerics = (float, int)
 
@@ -52,22 +54,14 @@ class Node(ABC):
             return NotImplemented
 
     def __str__(self) -> str:
-        return f"{self.__class__.__name__}: {self.children}"
+        return f"Node({self.__class__.__name__})"
 
     def __repr__(self) -> str:
         return self.__str__()
 
-    def __init__(self, *children: Node):
-        self.children = []
-        t = type(self)
-        for c in children:
-            if type(c) is t:
-                self.children.extend(c.children)
-            else:
-                self.children.append(c)
-
+    @abstractmethod
     def is_evaluatable(self) -> bool:
-        return all(c.is_evaluatable() for c in self.children)
+        pass
 
     @abstractmethod
     def evaluate(self) -> float:
@@ -76,10 +70,12 @@ class Node(ABC):
     def replace(self, pattern: Node, value: Node):
         pass
 
+    @abstractmethod
     def contains(self, node: Node):
-        return any(c.contains(node) for c in self.children)
+        pass
 
-    __contains__ = contains
+    def __contains__(self, item):
+        return self.contains(item)
 
 
 class Leaf(Node, ABC):
@@ -132,6 +128,15 @@ class Wildcard(Leaf):
 class BinOp(Node, ABC):
     name: str
 
+    def is_evaluatable(self) -> bool:
+        return all(c.is_evaluatable() for c in self.values)
+
+    def contains(self, node: Node):
+        return any(c.contains(node) for c in self.values)
+
+    def __init__(self, *values):
+        self.values = values
+
     @staticmethod
     @abstractmethod
     def evaluator(*values: float) -> float:
@@ -141,14 +146,20 @@ class BinOp(Node, ABC):
         if not self.is_evaluatable():
             raise ValueError("cannot evaluate expression")
 
-        return self.evaluator(*(v.evaluate() for v in self.children))
+        return self.evaluator(*(v.evaluate() for v in self.values))
 
     def __str__(self):
-        return '( ' + f' {self.name} '.join(map(lambda x: str(x), self.children)) + ' )'
+        return '( ' + f' {self.name} '.join(map(lambda x: str(x), self.values)) + ' )'
 
 
 class AddAndSub(Node):
     name = "+"
+
+    def is_evaluatable(self) -> bool:
+        return all(c.is_evaluatable() for c in itertools.chain(self.added_values, self.substracted_values))
+
+    def contains(self, node: Node):
+        return any(c.contains(node) for c in itertools.chain(self.added_values, self.substracted_values))
 
     def __str__(self):
         text = '( '
@@ -181,10 +192,6 @@ class AddAndSub(Node):
                     self.added_values.extend(val.substracted_values)
                 else:
                     self.substracted_values.append(val)
-
-
-
-        super().__init__(*self.added_values, *self.substracted_values)
 
     @classmethod
     def add(cls, *values: Node):
@@ -236,7 +243,12 @@ class Pow(BinOp):
 
     @staticmethod
     def evaluator(*values: float) -> float:
-        result = 1
-        for v in values[:-1]:
+        result = 1.0
+        for v in values[::-1]:
             result = v ** result
         return result
+
+
+@dataclass
+class MatchResult:
+    wildcards: dict[str, Node]

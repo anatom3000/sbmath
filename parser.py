@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Optional
+
 import sly
 
 import tree
@@ -9,7 +11,7 @@ class ParsingError(Exception):
     pass
 
 
-# noinspection PyUnboundLocalVariable
+# noinspection PyUnboundLocalVariable,PyUnresolvedReferences
 class Lexer(sly.Lexer):
     tokens = {
         IDENT, NUMBER,
@@ -44,6 +46,7 @@ class Lexer(sly.Lexer):
     RBRACK = r'\]'
 
 
+# noinspection PyUnresolvedReferences
 class Parser(sly.Parser):
     # Get the token list from the lexer (required)
     tokens = Lexer.tokens

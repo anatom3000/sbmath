@@ -162,4 +162,4 @@ def parse(data: str | tree.Numerics) -> Optional[tree.Node]:
     return result
 
 
-__all__ = ["parse"]
+__all__ = ["parse", "ParsingError"]

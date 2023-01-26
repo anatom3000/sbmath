@@ -1,14 +1,19 @@
 from __future__ import annotations
 
+import copy
 import itertools
 from abc import ABC, abstractmethod
 from collections.abc import Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from typing import Optional
 
 Numerics = (float, int)
 
 
 class Node(ABC):
+    def __neg__(self):
+        return self * -1
+
     def __add__(self, other) -> Node:
         if isinstance(other, Numerics):
             return self + Value(float(other))
@@ -17,6 +22,7 @@ class Node(ABC):
         else:
             return NotImplemented
 
+    # TODO: fix (3 + Node) => Add(Node(...), 3) (should be (3 + Node) => Add(3, Node(...))
     __radd__ = __add__
 
     def __sub__(self, other) -> Node:
@@ -60,12 +66,18 @@ class Node(ABC):
         return self.__str__()
 
     @abstractmethod
-    def is_evaluatable(self) -> bool:
+    def is_evaluable(self) -> bool:
         pass
 
     @abstractmethod
     def evaluate(self) -> float:
         pass
+
+    def matches(self, value: Node, state: MatchResult = None) -> Optional[MatchResult]:
+        if state is None:
+            return MatchResult()
+
+        return state if self == value else None
 
     def replace(self, pattern: Node, value: Node):
         pass
@@ -79,12 +91,15 @@ class Node(ABC):
 
 
 class Leaf(Node, ABC):
+    def __eq__(self, other):
+        return isinstance(other, type(self)) and self.data == other.data
+
     @abstractmethod
-    def is_evaluatable(self) -> bool:
+    def is_evaluable(self) -> bool:
         pass
 
     def contains(self, node: Node):
-        return self.data == node.evaluate()
+        return self.data == node.data
 
     def __init__(self, data):
         super().__init__()
@@ -95,7 +110,13 @@ class Leaf(Node, ABC):
 
 
 class Value(Leaf):
-    def is_evaluatable(self) -> bool:
+    def __eq__(self, other):
+        return isinstance(other, Node) and other.is_evaluable() and other.evaluate() == self.data
+
+    def contains(self, node: Node):
+        return self == node
+
+    def is_evaluable(self) -> bool:
         return True
 
     def evaluate(self) -> float:
@@ -103,15 +124,32 @@ class Value(Leaf):
 
 
 class Variable(Leaf):
-    def is_evaluatable(self) -> bool:
+
+    def is_evaluable(self) -> bool:
         return False
 
     def evaluate(self) -> float:
         raise TypeError("can't evaluate a variable")
 
 
-class Wildcard(Leaf):
-    def is_evaluatable(self) -> bool:
+class Wildcard(Node):
+    def contains(self, node: Node):
+        return False
+
+    def matches(self, value: Node, state: MatchResult = None) -> Optional[MatchResult]:
+        print(f"matching {self} to {value} ; {state}")
+        if state is None:
+            state = MatchResult()
+
+        if self.name in state.wildcards.keys() and not (value.matches == state.wildcards[self.name]):
+            return None
+        else:
+            print(f"matching {self} to {value} ; {state}")
+            state.wildcards[self.name] = value
+
+        return state
+
+    def is_evaluable(self) -> bool:
         return False
 
     def evaluate(self) -> float:
@@ -121,15 +159,20 @@ class Wildcard(Leaf):
         return f"[{self.name}]"
 
     def __init__(self, name: str):
-        super().__init__(None)
         self.name = name
 
 
 class BinOp(Node, ABC):
     name: str
 
-    def is_evaluatable(self) -> bool:
-        return all(c.is_evaluatable() for c in self.values)
+    def matches(self, value: Node, state: MatchResult = None) -> Optional[MatchResult]:
+        if self.is_evaluable() and value.is_evaluable() and self.evaluate() == value.evaluate():
+            return state
+        else:
+            return None
+
+    def is_evaluable(self) -> bool:
+        return all(c.is_evaluable() for c in self.values)
 
     def contains(self, node: Node):
         return any(c.contains(node) for c in self.values)
@@ -143,7 +186,7 @@ class BinOp(Node, ABC):
         pass
 
     def evaluate(self) -> float:
-        if not self.is_evaluatable():
+        if not self.is_evaluable():
             raise ValueError("cannot evaluate expression")
 
         return self.evaluator(*(v.evaluate() for v in self.values))
@@ -155,8 +198,80 @@ class BinOp(Node, ABC):
 class AddAndSub(Node):
     name = "+"
 
-    def is_evaluatable(self) -> bool:
-        return all(c.is_evaluatable() for c in itertools.chain(self.added_values, self.substracted_values))
+    def matches(self, value: Node, state: MatchResult = None) -> Optional[MatchResult]:
+        if state is None:
+            state = MatchResult()
+
+        if not isinstance(value, AddAndSub):
+            if self.is_evaluable() and value.is_evaluable():
+                return state if self.evaluate() == self.evaluate() else None
+
+        new_state = copy.deepcopy(state)
+
+        pattern_add_values = set(range(len(self. added_values)))
+        value_add_values   = set(range(len(value.added_values)))
+        pattern_sub_values = set(range(len(self. substracted_values)))
+        value_sub_values   = set(range(len(value.substracted_values)))
+
+        for vindex, vchild in enumerate(value.added_values):
+            for pindex, pchild in filter(lambda x: not isinstance(x[1], Wildcard), enumerate(self.added_values)):
+                if pindex not in pattern_add_values:
+                    continue
+
+                # print(f"[ADD-ADD] Trying to match {pchild=} with {vchild=}")
+                result = pchild.matches(vchild, new_state)
+                if result is not None:
+                    pattern_add_values.remove(pindex)
+                    value_add_values.remove(vindex)
+                    new_state = result
+                    break
+
+        for vindex, vchild in enumerate(value.substracted_values):
+            for pindex, pchild in filter(lambda x: not isinstance(x[1], Wildcard), enumerate(self.substracted_values)):
+                if pindex not in pattern_sub_values:
+                    continue
+                # print(f"[SUB-SUB] Trying to match {pchild=} with {vchild=}")
+                result = pchild.matches(vchild, new_state)
+                if result is not None:
+                    pattern_sub_values.remove(pindex)
+                    value_sub_values.remove(vindex)
+                    new_state = result
+                    break
+
+        for vindex in set(value_add_values):
+            for pindex, pchild in filter(lambda x: not isinstance(x[1], Wildcard), enumerate(self.substracted_values)):
+                if pindex not in pattern_sub_values:
+                    continue
+                # print(f"[ADD-SUB] Trying to match {pchild=} with {value.added_values[vindex]=}")
+                result: Optional[MatchResult] = pchild.matches(-value.added_values[vindex], new_state)
+                if result is not None:
+                    pattern_sub_values.remove(pindex)
+                    value_add_values.remove(vindex)
+                    new_state = result
+                    break
+
+        for vindex in set(value_sub_values):
+            for pindex, pchild in filter(lambda x: not isinstance(x[1], Wildcard), enumerate(self.added_values)):
+                if pindex not in pattern_add_values:
+                    continue
+                # print(f"[SUB-ADD] Trying to match {pchild=} with {value.added_values[vindex]=}")
+                result: Optional[MatchResult] = pchild.matches(-value.substracted_values[vindex], new_state)
+                if result is not None:
+                    pattern_add_values.remove(pindex)
+                    value_sub_values.remove(vindex)
+                    new_state = result
+                    break
+
+        # TODO: handle matching with wildcards
+
+        if pattern_add_values or pattern_sub_values or value_add_values or value_sub_values:
+            print(f"{pattern_add_values = }, {pattern_sub_values = }, {value_add_values = }, {value_sub_values = }")
+            return None
+
+        return new_state
+
+    def is_evaluable(self) -> bool:
+        return all(c.is_evaluable() for c in itertools.chain(self.added_values, self.substracted_values))
 
     def contains(self, node: Node):
         return any(c.contains(node) for c in itertools.chain(self.added_values, self.substracted_values))
@@ -220,7 +335,6 @@ class Mul(BinOp):
 
     @staticmethod
     def evaluator(*values: float) -> float:
-        print("ev mul", values)
         result = 1
         for v in values:
             result *= v
@@ -251,4 +365,5 @@ class Pow(BinOp):
 
 @dataclass
 class MatchResult:
-    wildcards: dict[str, Node]
+    wildcards: dict[str, Node] = field(default_factory=dict)
+    just_added: Optional[str] = None

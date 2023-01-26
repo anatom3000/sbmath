@@ -1,9 +1,10 @@
 import sly
 
-from parser import parse
+# noinspection PyCompatibility
+from parser import parse, ParsingError
 
 if __name__ == '__main__':
-    a = False
+    a = True
     while a:
 
         try:
@@ -11,11 +12,12 @@ if __name__ == '__main__':
             print(" =>", expr)
             pat = parse(input("P: "))
             print(" =>", pat)
-        except parse.ParsingError:
+        except ParsingError:
             expr = pat = None
 
         if expr is None or pat is None:
             print(" => Something went wrong...")
             continue
 
-        print(" => Matches:", False)  # pat.matches(expr))
+        m = pat.matches(expr)
+        print(" =>", "Pattern did not match." if m is None else f"Pattern matched: {m}")

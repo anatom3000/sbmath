@@ -1,5 +1,3 @@
-import sly
-
 # noinspection PyCompatibility
 from parser import parse, ParsingError
 

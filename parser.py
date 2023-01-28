@@ -59,7 +59,6 @@ class Parser(sly.Parser):
         ('right', TIMES, DIVIDE),
         ('right', POW),
         ('left', UMINUS),
-
     )
 
     # Grammar rules and actions
@@ -85,11 +84,14 @@ class Parser(sly.Parser):
 
     @_('MINUS expr %prec UMINUS')
     def expr(self, p):
-        return tree.Mul(tree.Value(-1.0), p.expr)
+        if isinstance(p.expr, tree.Value):
+            return tree.Value(-p.expr.data)
+        else:
+            return tree.Mul(tree.Value(-1.0), p.expr)
 
     @_('PLUS expr %prec UMINUS')
     def expr(self, p):
-        return f"{p.expr}"
+        return p.expr
 
     @_('number')
     def expr(self, p):

@@ -26,7 +26,7 @@ class Lexer(sly.Lexer):
     ignore = ' \t'
 
     # Regular expression rules for tokens
-    IDENT = r'[a-zA-Z][a-zA-Z0-9_]*'
+    IDENT = r'[a-zA-Z_][a-zA-Z0-9_]*'
 
     # https://stackoverflow.com/questions/12929308/python-regular-expression-that-matches-floating-point-numbers
     NUMBER = r'(\d+(\.\d*)?|\.\d+)([eE][+-]?\d+)?'

@@ -12,7 +12,10 @@ Numerics = (float, int)
 
 class Node(ABC):
     def __neg__(self):
-        return self * -1
+        if isinstance(self, Value):
+            return Value(-self.data)
+        else:
+            return Mul(Value(-1.0), self)
 
     def __add__(self, other) -> Node:
         if isinstance(other, Numerics):
@@ -136,18 +139,25 @@ class Wildcard(Node):
     def contains(self, node: Node):
         return False
 
+    def _match_contraints(self, value: Node) -> bool:
+        return True
+
     def matches(self, value: Node, state: MatchResult = None) -> Optional[MatchResult]:
         print(f"matching {self} to {value} ; {state}")
         if state is None:
             state = MatchResult()
 
-        if self.name in state.wildcards.keys() and not (value.matches == state.wildcards[self.name]):
-            return None
-        else:
-            print(f"matching {self} to {value} ; {state}")
-            state.wildcards[self.name] = value
+        if self.name == '_':
+            return state if self._match_contraints(value) else None
 
-        return state
+        if self.name in state.wildcards.keys() and not (value.matches(state.wildcards[self.name])):
+            return None
+
+        if self._match_contraints(value):
+            state.wildcards[self.name] = value
+            return state
+
+        return None
 
     def is_evaluable(self) -> bool:
         return False
@@ -198,77 +208,110 @@ class BinOp(Node, ABC):
 class AddAndSub(Node):
     name = "+"
 
+    def _match_evaluable(self, value: Node, state: MatchResult = None) -> Optional[MatchResult]:
+        return state if self.evaluate() == value.evaluate() else None
+
+    def _match_no_wildcards(self, value: AddAndSub, state: MatchResult = None) \
+            -> (MatchResult, AddAndSub, AddAndSub):
+        remaining_value = AddAndSub()
+        remaining_pattern = copy.deepcopy(self)
+        new_state = copy.deepcopy(state)
+
+        index: int = 0  # for linters
+        for val_value in value.added_values:
+            found = False
+            for index, pat_value in enumerate(remaining_pattern.added_values):
+                match_result = pat_value.matches(val_value, new_state)
+                if match_result is not None:
+                    new_state = match_result
+                    found = True
+                    break
+            if found:
+                # PyCharm complains but `index` is garanteed to be set
+                # because the only way `found` can be True is if one of the loop executed at least once
+                del remaining_pattern.added_values[index]
+            else:
+                for index, pat_value in enumerate(remaining_pattern.substracted_values):
+                    match_result = pat_value.matches(-val_value, new_state)
+                    if match_result is not None:
+                        new_state = match_result
+                        found = True
+                        break
+                if found:
+                    del remaining_pattern.substracted_values[index]
+                else:
+                    remaining_value.added_values.append(val_value)
+
+        for val_value in value.substracted_values:
+            found = False
+            for index, pat_value in remaining_pattern.substracted_values:
+                match_result = pat_value.matches(val_value, new_state)
+                if match_result is not None:
+                    new_state = match_result
+                    found = True
+                    break
+            if found:
+                # PyCharm complains but `index` is garanteed to be set
+                # because the only way `found` can be True is if one of the loop executed at least once
+                del remaining_pattern.substracted_values[index]
+            else:
+                for index, pat_value in remaining_pattern.added_values:
+                    match_result = pat_value.matches(-val_value, new_state)
+                    if match_result is not None:
+                        new_state = match_result
+                        found = True
+                        break
+                if found:
+                    del remaining_pattern.added_values[index]
+                else:
+                    remaining_value.substracted_values.append(val_value)
+
+        return new_state, remaining_pattern, remaining_value
+
+    def _match_wildcards(self, value: AddAndSub, state: MatchResult) -> Optional[MatchResult]:
+        match_table: dict[int, list[int]] = {}
+        for vindex, value in enumerate(value.added_values):
+            match_table[vindex] = []
+            for windex, wildcard in enumerate(self.added_values):
+                if wildcard.matches(value, copy.deepcopy(state)):
+                    match_table[vindex].append(windex)
+
+        print(match_table)
+        return None
+
+
+
     def matches(self, value: Node, state: MatchResult = None) -> Optional[MatchResult]:
         if state is None:
             state = MatchResult()
 
-        if not isinstance(value, AddAndSub):
-            if self.is_evaluable() and value.is_evaluable():
-                return state if self.evaluate() == self.evaluate() else None
-
-        new_state = copy.deepcopy(state)
-
-        pattern_add_values = set(range(len(self. added_values)))
-        value_add_values   = set(range(len(value.added_values)))
-        pattern_sub_values = set(range(len(self. substracted_values)))
-        value_sub_values   = set(range(len(value.substracted_values)))
-
-        for vindex, vchild in enumerate(value.added_values):
-            for pindex, pchild in filter(lambda x: not isinstance(x[1], Wildcard), enumerate(self.added_values)):
-                if pindex not in pattern_add_values:
-                    continue
-
-                # print(f"[ADD-ADD] Trying to match {pchild=} with {vchild=}")
-                result = pchild.matches(vchild, new_state)
-                if result is not None:
-                    pattern_add_values.remove(pindex)
-                    value_add_values.remove(vindex)
-                    new_state = result
-                    break
-
-        for vindex, vchild in enumerate(value.substracted_values):
-            for pindex, pchild in filter(lambda x: not isinstance(x[1], Wildcard), enumerate(self.substracted_values)):
-                if pindex not in pattern_sub_values:
-                    continue
-                # print(f"[SUB-SUB] Trying to match {pchild=} with {vchild=}")
-                result = pchild.matches(vchild, new_state)
-                if result is not None:
-                    pattern_sub_values.remove(pindex)
-                    value_sub_values.remove(vindex)
-                    new_state = result
-                    break
-
-        for vindex in set(value_add_values):
-            for pindex, pchild in filter(lambda x: not isinstance(x[1], Wildcard), enumerate(self.substracted_values)):
-                if pindex not in pattern_sub_values:
-                    continue
-                # print(f"[ADD-SUB] Trying to match {pchild=} with {value.added_values[vindex]=}")
-                result: Optional[MatchResult] = pchild.matches(-value.added_values[vindex], new_state)
-                if result is not None:
-                    pattern_sub_values.remove(pindex)
-                    value_add_values.remove(vindex)
-                    new_state = result
-                    break
-
-        for vindex in set(value_sub_values):
-            for pindex, pchild in filter(lambda x: not isinstance(x[1], Wildcard), enumerate(self.added_values)):
-                if pindex not in pattern_add_values:
-                    continue
-                # print(f"[SUB-ADD] Trying to match {pchild=} with {value.added_values[vindex]=}")
-                result: Optional[MatchResult] = pchild.matches(-value.substracted_values[vindex], new_state)
-                if result is not None:
-                    pattern_add_values.remove(pindex)
-                    value_sub_values.remove(vindex)
-                    new_state = result
-                    break
-
-        # TODO: handle matching with wildcards
-
-        if pattern_add_values or pattern_sub_values or value_add_values or value_sub_values:
-            print(f"{pattern_add_values = }, {pattern_sub_values = }, {value_add_values = }, {value_sub_values = }")
+        if self.is_evaluable() and value.is_evaluable():
+            return self._match_evaluable(value, state)
+        elif not isinstance(value, AddAndSub):
             return None
 
-        return new_state
+        self: AddAndSub
+        value: AddAndSub
+
+        no_wildcard_self = AddAndSub(
+            list(filter(lambda x: not isinstance(x, Wildcard), self.added_values)),
+            list(filter(lambda x: not isinstance(x, Wildcard), self.substracted_values))
+        )
+
+        state, remaining_pattern, remaining_value = no_wildcard_self._match_no_wildcards(value, state)
+
+        if remaining_pattern.added_values or remaining_pattern.substracted_values:
+            return None
+
+        if not (remaining_value.added_values or remaining_value.substracted_values):
+            return state
+
+        wildcard_self = AddAndSub(
+            list(filter(lambda x: isinstance(x, Wildcard), self.added_values)),
+            list(filter(lambda x: isinstance(x, Wildcard), self.substracted_values))
+        )
+
+        return wildcard_self._match_wildcards(remaining_value, state)
 
     def is_evaluable(self) -> bool:
         return all(c.is_evaluable() for c in itertools.chain(self.added_values, self.substracted_values))

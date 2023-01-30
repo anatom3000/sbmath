@@ -3,7 +3,7 @@ from __future__ import annotations
 import copy
 import itertools
 from abc import ABC, abstractmethod
-from collections.abc import Sequence
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from typing import Optional
 
@@ -11,6 +11,9 @@ Numerics = (float, int)
 
 
 class Node(ABC):
+    def __hash__(self):
+        return hash(id(self))
+
     def __neg__(self):
         if isinstance(self, Value):
             return Value(-self.data)
@@ -82,11 +85,23 @@ class Node(ABC):
 
         return state if self == value else None
 
-    def replace(self, pattern: Node, value: Node):
+    @abstractmethod
+    def _replace_identifiers(self, match_result: MatchResult) -> Node:
         pass
 
+    def replace(self, old_pattern: Node, new_pattern: Node) -> Optional[Node]:
+        m = old_pattern.matches(self)
+        if m is None:
+            return None
+
+        try:
+            new = new_pattern._replace_identifier(m)
+        except ReplacingError:
+            return None
+        return new
+
     @abstractmethod
-    def contains(self, node: Node):
+    def contains(self, pattern: Node) -> bool:
         pass
 
     def __contains__(self, item):
@@ -101,8 +116,11 @@ class Leaf(Node, ABC):
     def is_evaluable(self) -> bool:
         pass
 
-    def contains(self, node: Node):
-        return self.data == node.data
+    def contains(self, pattern: Node) -> bool:
+        return self.data == pattern.data
+
+    def _replace_identifiers(self, match_result: MatchResult) -> Node:
+        return self
 
     def __init__(self, data):
         super().__init__()
@@ -116,8 +134,8 @@ class Value(Leaf):
     def __eq__(self, other):
         return isinstance(other, Node) and other.is_evaluable() and other.evaluate() == self.data
 
-    def contains(self, node: Node):
-        return self == node
+    def contains(self, pattern: Node) -> bool:
+        return self == pattern
 
     def is_evaluable(self) -> bool:
         return True
@@ -127,6 +145,8 @@ class Value(Leaf):
 
 
 class Variable(Leaf):
+    def __hash__(self):
+        return hash(id(self))
 
     def is_evaluable(self) -> bool:
         return False
@@ -136,21 +156,26 @@ class Variable(Leaf):
 
 
 class Wildcard(Node):
-    def contains(self, node: Node):
+    def contains(self, pattern: Node) -> bool:
         return False
 
     def _match_contraints(self, value: Node) -> bool:
+        if "evaluable" in self.constraints.keys():
+            if self.constraints["evaluable"] == Value(1.0) and not value.is_evaluable():
+                return False
+            if self.constraints["evaluable"] == Value(0.0) and value.is_evaluable():
+                return False
+
         return True
 
     def matches(self, value: Node, state: MatchResult = None) -> Optional[MatchResult]:
-        print(f"matching {self} to {value} ; {state}")
         if state is None:
             state = MatchResult()
 
         if self.name == '_':
             return state if self._match_contraints(value) else None
 
-        if self.name in state.wildcards.keys() and not (value.matches(state.wildcards[self.name])):
+        if self.name in state.wildcards.keys() and value.matches(state.wildcards[self.name]) is None:
             return None
 
         if self._match_contraints(value):
@@ -159,6 +184,12 @@ class Wildcard(Node):
 
         return None
 
+    def _replace_identifiers(self, match_result: MatchResult) -> Node:
+        if self.name not in match_result.wildcards:
+            raise ReplacingError(f"name '{self.name}' not found in ID mapping")
+
+        return match_result.wildcards[self.name]
+
     def is_evaluable(self) -> bool:
         return False
 
@@ -166,10 +197,18 @@ class Wildcard(Node):
         raise TypeError("can't evaluate a wildcard")
 
     def __str__(self):
-        return f"[{self.name}]"
+        text = f"[{self.name}, "
 
-    def __init__(self, name: str):
+        for k, v in self.constraints.items():
+            text += f"{k}={v}, "
+
+        text = text[:-2] + "]"
+
+        return text
+
+    def __init__(self, name: str, **constraints: Node):
         self.name = name
+        self.constraints = constraints
 
 
 class BinOp(Node, ABC):
@@ -181,11 +220,14 @@ class BinOp(Node, ABC):
         else:
             return None
 
+    def _replace_identifiers(self, match_result: MatchResult) -> Node:
+        return type(self)(*(x._replace_identifiers(match_result) for x in self.values))
+
     def is_evaluable(self) -> bool:
         return all(c.is_evaluable() for c in self.values)
 
-    def contains(self, node: Node):
-        return any(c.contains(node) for c in self.values)
+    def contains(self, pattern: Node) -> bool:
+        return any(c.contains(pattern) for c in self.values)
 
     def __init__(self, *values):
         self.values = values
@@ -269,17 +311,33 @@ class AddAndSub(Node):
         return new_state, remaining_pattern, remaining_value
 
     def _match_wildcards(self, value: AddAndSub, state: MatchResult) -> Optional[MatchResult]:
-        match_table: dict[int, list[int]] = {}
-        for vindex, value in enumerate(value.added_values):
-            match_table[vindex] = []
-            for windex, wildcard in enumerate(self.added_values):
+        match_table: dict[Node, list[Wildcard]] = {}
+        for value in value.added_values:
+            match_table[value] = []
+            wildcard: Wildcard
+            for wildcard in self.added_values:
                 if wildcard.matches(value, copy.deepcopy(state)):
-                    match_table[vindex].append(windex)
+                    match_table[value].append(wildcard)
 
-        print(match_table)
-        return None
+        consumed_wildcards = []
+        to_be_matched_values = list(match_table.keys())
 
+        for value, matches in match_table.items():
+            valid_matches = [m for m in matches if m not in consumed_wildcards]
 
+            if len(valid_matches) == 0:
+                return None
+            elif len(valid_matches) == 1:
+                state = valid_matches[0].matches(value, state)
+                consumed_wildcards.append(valid_matches[0])
+                to_be_matched_values.remove(value)
+            else:
+                raise NotImplementedError("TODO: implement add-sub wildcard matching for ambigious cases")
+
+        if to_be_matched_values:
+            return None
+
+        return state
 
     def matches(self, value: Node, state: MatchResult = None) -> Optional[MatchResult]:
         if state is None:
@@ -313,11 +371,17 @@ class AddAndSub(Node):
 
         return wildcard_self._match_wildcards(remaining_value, state)
 
+    def _replace_identifiers(self, match_result: MatchResult) -> Node:
+        return AddAndSub(
+            added_values=(x._replace_identifiers(match_result) for x in self.added_values),
+            substracted_values=(x._replace_identifiers(match_result) for x in self.substracted_values)
+        )
+
     def is_evaluable(self) -> bool:
         return all(c.is_evaluable() for c in itertools.chain(self.added_values, self.substracted_values))
 
-    def contains(self, node: Node):
-        return any(c.contains(node) for c in itertools.chain(self.added_values, self.substracted_values))
+    def contains(self, pattern: Node) -> bool:
+        return any(c.contains(pattern) for c in itertools.chain(self.added_values, self.substracted_values))
 
     def __str__(self):
         text = '( '
@@ -331,7 +395,7 @@ class AddAndSub(Node):
 
         return text + ' )'
 
-    def __init__(self, added_values: Sequence[Node] = None, substracted_values: Sequence[Node] = None):
+    def __init__(self, added_values: Iterable[Node] = None, substracted_values: Iterable[Node] = None):
         self.added_values = []
         self.substracted_values = []
 
@@ -410,3 +474,7 @@ class Pow(BinOp):
 class MatchResult:
     wildcards: dict[str, Node] = field(default_factory=dict)
     just_added: Optional[str] = None
+
+
+class ReplacingError(Exception):
+    pass

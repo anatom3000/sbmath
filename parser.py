@@ -20,6 +20,7 @@ class Lexer(sly.Lexer):
         TIMES, DIVIDE,
         LPAREN, RPAREN,
         LBRACK, RBRACK,
+        ARG_SEP, ARG_ASSIGN
     }
 
     # String containing ignored characters between tokens
@@ -44,6 +45,9 @@ class Lexer(sly.Lexer):
 
     LBRACK = r'\['
     RBRACK = r'\]'
+
+    ARG_ASSIGN = r'='
+    ARG_SEP = r','
 
 
 # noinspection PyUnresolvedReferences
@@ -121,10 +125,22 @@ class Parser(sly.Parser):
     def wildcard(self, p):
         return tree.Wildcard(p.IDENT)
 
-    # @_('number expr %prec IMPMUL')
-    # def expr(self, p):
-    #     return tree.Mul(p.number, p.expr)
-    #
+    @_('IDENT ARG_ASSIGN expr')
+    def wc_arg(self, p):
+        return {p.IDENT: p.expr}
+
+    @_('wc_arg')
+    def wc_args(self, p):
+        return p.wc_arg
+
+    @_('wc_args ARG_SEP wc_arg')
+    def wc_args(self, p):
+        return {**p.wc_args, **p.wc_arg}
+
+    @_("LBRACK IDENT ARG_SEP wc_args RBRACK")
+    def wildcard(self, p):
+        return tree.Wildcard(p.IDENT, **p.wc_args)
+
     @_('exprblock exprblock %prec IMPMUL')
     def expr(self, p):
         return tree.Mul(p.exprblock0, p.exprblock1)

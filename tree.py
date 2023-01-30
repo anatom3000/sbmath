@@ -18,7 +18,7 @@ class Node(ABC):
         if isinstance(self, Value):
             return Value(-self.data)
         else:
-            return Mul(Value(-1.0), self)
+            return MulAndDiv.mul(Value(-1.0), self)
 
     def __add__(self, other) -> Node:
         if isinstance(other, Numerics):
@@ -45,7 +45,7 @@ class Node(ABC):
         if isinstance(other, Numerics):
             return self * Value(float(other))
         elif isinstance(other, Node):
-            return Mul(self, other)
+            return MulAndDiv.mul(self, other)
         else:
             return NotImplemented
 
@@ -53,7 +53,7 @@ class Node(ABC):
         if isinstance(other, Numerics):
             return self / Value(float(other))
         elif isinstance(other, Node):
-            return Div(self, other)
+            return MulAndDiv.div(self, other)
         else:
             return NotImplemented
 
@@ -81,7 +81,7 @@ class Node(ABC):
 
     def matches(self, value: Node, state: MatchResult = None) -> Optional[MatchResult]:
         if state is None:
-            return MatchResult()
+            state = MatchResult()
 
         return state if self == value else None
 
@@ -95,7 +95,7 @@ class Node(ABC):
             return None
 
         try:
-            new = new_pattern._replace_identifier(m)
+            new = new_pattern._replace_identifiers(m)
         except ReplacingError:
             return None
         return new
@@ -117,7 +117,7 @@ class Leaf(Node, ABC):
         pass
 
     def contains(self, pattern: Node) -> bool:
-        return self.data == pattern.data
+        return pattern.matches(self) is not None
 
     def _replace_identifiers(self, match_result: MatchResult) -> Node:
         return self
@@ -220,6 +220,7 @@ class BinOp(Node, ABC):
         else:
             return None
 
+    # noinspection PyProtectedMember
     def _replace_identifiers(self, match_result: MatchResult) -> Node:
         return type(self)(*(x._replace_identifiers(match_result) for x in self.values))
 
@@ -247,22 +248,28 @@ class BinOp(Node, ABC):
         return '( ' + f' {self.name} '.join(map(lambda x: str(x), self.values)) + ' )'
 
 
-class AddAndSub(Node):
-    name = "+"
+class AdvancedBinOp(Node, ABC):
+    base_operation_symbol: str
+    inverse_operation_symbol: str
+
+    @staticmethod
+    @abstractmethod
+    def _invert_value(value: Node) -> Node:
+        pass
 
     def _match_evaluable(self, value: Node, state: MatchResult = None) -> Optional[MatchResult]:
         return state if self.evaluate() == value.evaluate() else None
 
-    def _match_no_wildcards(self, value: AddAndSub, state: MatchResult = None) \
-            -> (MatchResult, AddAndSub, AddAndSub):
-        remaining_value = AddAndSub()
+    def _match_no_wildcards(self, value: AdvancedBinOp, state: MatchResult = None) \
+            -> (MatchResult, AdvancedBinOp, AdvancedBinOp):
+        remaining_value = type(self)()
         remaining_pattern = copy.deepcopy(self)
         new_state = copy.deepcopy(state)
 
         index: int = 0  # for linters
-        for val_value in value.added_values:
+        for val_value in value.base_values:
             found = False
-            for index, pat_value in enumerate(remaining_pattern.added_values):
+            for index, pat_value in enumerate(remaining_pattern.inverted_values):
                 match_result = pat_value.matches(val_value, new_state)
                 if match_result is not None:
                     new_state = match_result
@@ -271,22 +278,22 @@ class AddAndSub(Node):
             if found:
                 # PyCharm complains but `index` is garanteed to be set
                 # because the only way `found` can be True is if one of the loop executed at least once
-                del remaining_pattern.added_values[index]
+                del remaining_pattern.base_values[index]
             else:
-                for index, pat_value in enumerate(remaining_pattern.substracted_values):
-                    match_result = pat_value.matches(-val_value, new_state)
+                for index, pat_value in enumerate(remaining_pattern.inverted_values):
+                    match_result = pat_value.matches(self._invert_value(val_value), new_state)
                     if match_result is not None:
                         new_state = match_result
                         found = True
                         break
                 if found:
-                    del remaining_pattern.substracted_values[index]
+                    del remaining_pattern.inverted_values[index]
                 else:
-                    remaining_value.added_values.append(val_value)
+                    remaining_value.base_values.append(val_value)
 
-        for val_value in value.substracted_values:
+        for val_value in value.inverted_values:
             found = False
-            for index, pat_value in remaining_pattern.substracted_values:
+            for index, pat_value in remaining_pattern.inverted_values:
                 match_result = pat_value.matches(val_value, new_state)
                 if match_result is not None:
                     new_state = match_result
@@ -295,27 +302,27 @@ class AddAndSub(Node):
             if found:
                 # PyCharm complains but `index` is garanteed to be set
                 # because the only way `found` can be True is if one of the loop executed at least once
-                del remaining_pattern.substracted_values[index]
+                del remaining_pattern.inverted_values[index]
             else:
-                for index, pat_value in remaining_pattern.added_values:
-                    match_result = pat_value.matches(-val_value, new_state)
+                for index, pat_value in remaining_pattern.base_values:
+                    match_result = pat_value.matches(self._invert_value(val_value), new_state)
                     if match_result is not None:
                         new_state = match_result
                         found = True
                         break
                 if found:
-                    del remaining_pattern.added_values[index]
+                    del remaining_pattern.base_values[index]
                 else:
-                    remaining_value.substracted_values.append(val_value)
+                    remaining_value.inverted_values.append(val_value)
 
         return new_state, remaining_pattern, remaining_value
 
-    def _match_wildcards(self, value: AddAndSub, state: MatchResult) -> Optional[MatchResult]:
+    def _match_wildcards(self, value: AdvancedBinOp, state: MatchResult) -> Optional[MatchResult]:
         match_table: dict[Node, list[Wildcard]] = {}
-        for value in value.added_values:
+        for value in value.base_values:
             match_table[value] = []
             wildcard: Wildcard
-            for wildcard in self.added_values:
+            for wildcard in self.base_values:
                 if wildcard.matches(value, copy.deepcopy(state)):
                     match_table[value].append(wildcard)
 
@@ -345,117 +352,133 @@ class AddAndSub(Node):
 
         if self.is_evaluable() and value.is_evaluable():
             return self._match_evaluable(value, state)
-        elif not isinstance(value, AddAndSub):
+        elif not isinstance(value, type(self)):
             return None
 
-        self: AddAndSub
-        value: AddAndSub
+        self: AdvancedBinOp
+        value: AdvancedBinOp
 
-        no_wildcard_self = AddAndSub(
-            list(filter(lambda x: not isinstance(x, Wildcard), self.added_values)),
-            list(filter(lambda x: not isinstance(x, Wildcard), self.substracted_values))
+        no_wildcard_self = type(self)(
+            list(filter(lambda x: not isinstance(x, Wildcard), self.base_values)),
+            list(filter(lambda x: not isinstance(x, Wildcard), self.inverted_values))
         )
 
         state, remaining_pattern, remaining_value = no_wildcard_self._match_no_wildcards(value, state)
 
-        if remaining_pattern.added_values or remaining_pattern.substracted_values:
+        if remaining_pattern.base_values or remaining_pattern.inverted_values:
             return None
 
-        if not (remaining_value.added_values or remaining_value.substracted_values):
+        if not (remaining_value.base_values or remaining_value.inverted_values):
             return state
 
-        wildcard_self = AddAndSub(
-            list(filter(lambda x: isinstance(x, Wildcard), self.added_values)),
-            list(filter(lambda x: isinstance(x, Wildcard), self.substracted_values))
+        wildcard_self = type(self)(
+            list(filter(lambda x: isinstance(x, Wildcard), self.base_values)),
+            list(filter(lambda x: isinstance(x, Wildcard), self.inverted_values))
         )
 
         return wildcard_self._match_wildcards(remaining_value, state)
 
     def _replace_identifiers(self, match_result: MatchResult) -> Node:
-        return AddAndSub(
-            added_values=(x._replace_identifiers(match_result) for x in self.added_values),
-            substracted_values=(x._replace_identifiers(match_result) for x in self.substracted_values)
+        return type(self)(
+            base_values=(x._replace_identifiers(match_result) for x in self.base_values),
+            inverted_values=(x._replace_identifiers(match_result) for x in self.inverted_values)
         )
 
     def is_evaluable(self) -> bool:
-        return all(c.is_evaluable() for c in itertools.chain(self.added_values, self.substracted_values))
+        return all(c.is_evaluable() for c in itertools.chain(self.base_values, self.inverted_values))
 
     def contains(self, pattern: Node) -> bool:
-        return any(c.contains(pattern) for c in itertools.chain(self.added_values, self.substracted_values))
+        return pattern.matches(self) or any(
+            c.contains(pattern) for c in itertools.chain(self.base_values, self.inverted_values))
 
     def __str__(self):
         text = '( '
 
-        text += ' + '.join(map(str, self.added_values))
+        text += f' {self.base_operation_symbol} '.join(map(str, self.base_values))
 
-        if self.substracted_values:
-            text += ' - ' if self.added_values else '- '
+        if self.inverted_values:
+            text += ' - ' if self.base_values else '- '
 
-        text += ' - '.join(map(str, self.substracted_values))
+        text += f' {self.inverse_operation_symbol} '.join(map(str, self.inverted_values))
 
         return text + ' )'
 
-    def __init__(self, added_values: Iterable[Node] = None, substracted_values: Iterable[Node] = None):
-        self.added_values = []
-        self.substracted_values = []
+    def __init__(self, base_values: Iterable[Node] = None, inverted_values: Iterable[Node] = None):
+        self.base_values = []
+        self.inverted_values = []
 
-        if added_values is not None:
-            for val in added_values:
-                if isinstance(val, AddAndSub):
-                    self.added_values.extend(val.added_values)
-                    self.substracted_values.extend(val.substracted_values)
+        if base_values is not None:
+            for val in base_values:
+                if isinstance(val, type(self)):
+                    self.base_values.extend(val.base_values)
+                    self.inverted_values.extend(val.inverted_values)
                 else:
-                    self.added_values.append(val)
+                    self.base_values.append(val)
 
-        if substracted_values is not None:
-            for val in substracted_values:
-                if isinstance(val, AddAndSub):
-                    self.substracted_values.extend(val.added_values)
-                    self.added_values.extend(val.substracted_values)
+        if inverted_values is not None:
+            for val in inverted_values:
+                if isinstance(val, type(self)):
+                    self.inverted_values.extend(val.base_values)
+                    self.base_values.extend(val.inverted_values)
                 else:
-                    self.substracted_values.append(val)
+                    self.inverted_values.append(val)
+
+
+class AddAndSub(AdvancedBinOp):
+    base_operation_symbol = '+'
+    inverse_operation_symbol = '-'
+
+    @staticmethod
+    def _invert_value(value: Node) -> Node:
+        return -value
 
     @classmethod
     def add(cls, *values: Node):
-        return cls(values)
+        return cls(base_values=values)
 
     @classmethod
     def sub(cls, *values: Node, positive_first_node: bool = True):
         if positive_first_node:
-            return cls(added_values=values[:1], substracted_values=values[1:])
+            return cls(base_values=values[:1], inverted_values=values[1:])
         else:
-            return cls(substracted_values=values)
+            return cls(inverted_values=values)
 
     def evaluate(self) -> float:
-        result = 0
-        for c in self.added_values:
+        result = 0.0
+        for c in self.base_values:
             result += c.evaluate()
-        for c in self.substracted_values:
+        for c in self.inverted_values:
             result -= c.evaluate()
 
         return result
 
 
-# TODO: merge Mul and Div into a single object (see AddAndMul)
-class Mul(BinOp):
-    name = '*'
+class MulAndDiv(AdvancedBinOp):
+    base_operation_symbol = '*'
+    inverse_operation_symbol = '/'
 
     @staticmethod
-    def evaluator(*values: float) -> float:
-        result = 1
-        for v in values:
-            result *= v
-        return result
+    def _invert_value(value: Node) -> Node:
+        return MulAndDiv.div(Value(1.0), value)
 
+    @classmethod
+    def mul(cls, *values: Node):
+        return cls(base_values=values)
 
-class Div(BinOp):
-    name = '/'
+    @classmethod
+    def div(cls, *values: Node, multiply_first_node: bool = True):
+        if multiply_first_node:
+            return cls(base_values=values[:1], inverted_values=values[1:])
+        else:
+            return cls(inverted_values=values)
 
-    @staticmethod
-    def evaluator(*values: float) -> float:
-        result = 1
-        for v in values:
-            result *= v
+    def evaluate(self) -> float:
+        result = 0.0
+        for c in self.base_values:
+            result *= c.evaluate()
+        for c in self.inverted_values:
+            result /= c.evaluate()
+
         return result
 
 
@@ -473,7 +496,6 @@ class Pow(BinOp):
 @dataclass
 class MatchResult:
     wildcards: dict[str, Node] = field(default_factory=dict)
-    just_added: Optional[str] = None
 
 
 class ReplacingError(Exception):

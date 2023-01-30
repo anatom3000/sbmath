@@ -76,11 +76,11 @@ class Parser(sly.Parser):
 
     @_('expr TIMES expr')
     def expr(self, p):
-        return tree.Mul(p.expr0, p.expr1)
+        return tree.MulAndDiv.mul(p.expr0, p.expr1)
 
     @_('expr DIVIDE expr')
     def expr(self, p):
-        return tree.Div(p.expr0, p.expr1)
+        return tree.MulAndDiv.div(p.expr0, p.expr1)
 
     @_('expr POW expr')
     def expr(self, p):

@@ -134,9 +134,6 @@ class Value(Leaf):
     def __eq__(self, other):
         return isinstance(other, Node) and other.is_evaluable() and other.evaluate() == self.data
 
-    def contains(self, pattern: Node) -> bool:
-        return self == pattern
-
     def is_evaluable(self) -> bool:
         return True
 
@@ -266,10 +263,12 @@ class AdvancedBinOp(Node, ABC):
         remaining_pattern = copy.deepcopy(self)
         new_state = copy.deepcopy(state)
 
+        # print(f"hi {value.base_values}")
+
         index: int = 0  # for linters
         for val_value in value.base_values:
             found = False
-            for index, pat_value in enumerate(remaining_pattern.inverted_values):
+            for index, pat_value in enumerate(remaining_pattern.base_values):
                 match_result = pat_value.matches(val_value, new_state)
                 if match_result is not None:
                     new_state = match_result
@@ -375,6 +374,8 @@ class AdvancedBinOp(Node, ABC):
             list(filter(lambda x: isinstance(x, Wildcard), self.base_values)),
             list(filter(lambda x: isinstance(x, Wildcard), self.inverted_values))
         )
+
+        print(f"This is the endgame now! {wildcard_self}")
 
         return wildcard_self._match_wildcards(remaining_value, state)
 

@@ -18,4 +18,4 @@ if __name__ == '__main__':
             continue
 
         m = pat.matches(expr)
-        print(" =>", "Pattern did not match." if m is None else f"Pattern matched: {m}")
+        print(" =>", f"{m}")

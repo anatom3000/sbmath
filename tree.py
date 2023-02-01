@@ -7,6 +7,8 @@ from collections.abc import Iterable
 from dataclasses import dataclass, field
 from typing import Optional
 
+import utils
+
 Numerics = (float, int)
 
 
@@ -131,6 +133,9 @@ class Leaf(Node, ABC):
 
 
 class Value(Leaf):
+    def __hash__(self):
+        return hash(self.data)
+
     def __eq__(self, other):
         return isinstance(other, Node) and other.is_evaluable() and other.evaluate() == self.data
 
@@ -157,10 +162,10 @@ class Wildcard(Node):
         return False
 
     def _match_contraints(self, value: Node) -> bool:
-        if "evaluable" in self.constraints.keys():
-            if self.constraints["evaluable"] == Value(1.0) and not value.is_evaluable():
+        if "eval" in self.constraints.keys():
+            if self.constraints["eval"] == Value(1.0) and not value.is_evaluable():
                 return False
-            if self.constraints["evaluable"] == Value(0.0) and value.is_evaluable():
+            if self.constraints["eval"] == Value(0.0) and value.is_evaluable():
                 return False
 
         return True
@@ -249,6 +254,8 @@ class AdvancedBinOp(Node, ABC):
     base_operation_symbol: str
     inverse_operation_symbol: str
 
+    identity: Node
+
     @staticmethod
     @abstractmethod
     def _invert_value(value: Node) -> Node:
@@ -262,8 +269,6 @@ class AdvancedBinOp(Node, ABC):
         remaining_value = type(self)()
         remaining_pattern = copy.deepcopy(self)
         new_state = copy.deepcopy(state)
-
-        # print(f"hi {value.base_values}")
 
         index: int = 0  # for linters
         for val_value in value.base_values:
@@ -316,31 +321,68 @@ class AdvancedBinOp(Node, ABC):
 
         return new_state, remaining_pattern, remaining_value
 
+    def _remove_wildcard_match(self, value: Node, wildcard: Wildcard, match_table: utils.TwoWayMapping, state: MatchResult) \
+            -> (utils.TwoWayMapping, MatchResult):
+
+        similars = [similar for similar in match_table.get_from_value(wildcard)
+                    if len(list(match_table.get_from_key(similar))) == 1]
+
+        if len(similars) == 0:
+            state = wildcard.matches(value, state)
+            match_table.remove_key(value)
+
+        elif len(similars) == 1:
+            state = wildcard.matches(similars[0], state)
+            match_table.remove_key(similars[0])
+        else:
+            state = wildcard.matches(type(self)(base_values=similars), state)
+            for s in similars:
+                match_table.remove_key(s)
+
+        # p = lambda a: ({k: a.get_from_key(k) for k in a.keys()}, {k: a.get_from_value(k) for k in a.values()})
+        match_table.remove_value(wildcard)
+
+        return match_table, state
+
+    def _clean_up_single_wildcards(self, match_table: utils.TwoWayMapping, state: MatchResult) \
+            -> Optional[(utils.TwoWayMapping, MatchResult)]:
+
+        while any(len(match_table.get_from_key(k)) < 2 for k in match_table.keys()):
+            for value in list(match_table.keys()):
+                if value not in match_table.keys():
+                    continue
+
+                matches = list(match_table.get_from_key(value))
+
+                if len(matches) == 0:
+                    return None
+                elif len(matches) == 1:
+                    match_table, state = self._remove_wildcard_match(value, matches[0], match_table, state)
+
+        return match_table, state
+
     def _match_wildcards(self, value: AdvancedBinOp, state: MatchResult) -> Optional[MatchResult]:
-        match_table: dict[Node, list[Wildcard]] = {}
+        match_table = utils.TwoWayMapping()
         for value in value.base_values:
-            match_table[value] = []
             wildcard: Wildcard
             for wildcard in self.base_values:
                 if wildcard.matches(value, copy.deepcopy(state)):
-                    match_table[value].append(wildcard)
+                    match_table.add(value, wildcard)
 
-        consumed_wildcards = []
-        to_be_matched_values = list(match_table.keys())
+        result = self._clean_up_single_wildcards(match_table, state)
+        if result is None:
+            return None
 
-        for value, matches in match_table.items():
-            valid_matches = [m for m in matches if m not in consumed_wildcards]
+        match_table, state = result
 
-            if len(valid_matches) == 0:
-                return None
-            elif len(valid_matches) == 1:
-                state = valid_matches[0].matches(value, state)
-                consumed_wildcards.append(valid_matches[0])
-                to_be_matched_values.remove(value)
-            else:
-                raise NotImplementedError("TODO: implement add-sub wildcard matching for ambigious cases")
+        match_table: utils.TwoWayMapping()
 
-        if to_be_matched_values:
+        for value in list(match_table.keys()):
+            if value not in list(match_table.keys()):
+                continue
+            match_table, state = self._remove_wildcard_match(value, match_table.get_from_key(value)[0], match_table, state)
+
+        if len(list(match_table.keys())) != 0:
             return None
 
         return state
@@ -358,8 +400,9 @@ class AdvancedBinOp(Node, ABC):
         value: AdvancedBinOp
 
         no_wildcard_self = type(self)(
-            list(filter(lambda x: not isinstance(x, Wildcard), self.base_values)),
-            list(filter(lambda x: not isinstance(x, Wildcard), self.inverted_values))
+            list(filter(lambda x: not isinstance(x, Wildcard) and self.identity.matches(x) is None, self.base_values)),
+            list(filter(lambda x: not isinstance(x, Wildcard) and self.identity.matches(x) is None,
+                        self.inverted_values))
         )
 
         state, remaining_pattern, remaining_value = no_wildcard_self._match_no_wildcards(value, state)
@@ -367,17 +410,14 @@ class AdvancedBinOp(Node, ABC):
         if remaining_pattern.base_values or remaining_pattern.inverted_values:
             return None
 
-        if not (remaining_value.base_values or remaining_value.inverted_values):
-            return state
-
         wildcard_self = type(self)(
             list(filter(lambda x: isinstance(x, Wildcard), self.base_values)),
             list(filter(lambda x: isinstance(x, Wildcard), self.inverted_values))
         )
 
-        print(f"This is the endgame now! {wildcard_self}")
+        result = wildcard_self._match_wildcards(remaining_value, state)
 
-        return wildcard_self._match_wildcards(remaining_value, state)
+        return result
 
     def _replace_identifiers(self, match_result: MatchResult) -> Node:
         return type(self)(
@@ -428,6 +468,7 @@ class AdvancedBinOp(Node, ABC):
 class AddAndSub(AdvancedBinOp):
     base_operation_symbol = '+'
     inverse_operation_symbol = '-'
+    identity = Value(0.0)
 
     @staticmethod
     def _invert_value(value: Node) -> Node:
@@ -457,6 +498,8 @@ class AddAndSub(AdvancedBinOp):
 class MulAndDiv(AdvancedBinOp):
     base_operation_symbol = '*'
     inverse_operation_symbol = '/'
+
+    identity = Value(1.0)
 
     @staticmethod
     def _invert_value(value: Node) -> Node:

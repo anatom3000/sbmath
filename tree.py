@@ -5,12 +5,10 @@ import itertools
 from abc import ABC, abstractmethod
 from collections.abc import Iterable
 from dataclasses import dataclass, field
+from numbers import Real
 from typing import Optional
 
 import utils
-
-Numerics = (float, int)
-
 
 class Node(ABC):
     def __hash__(self):
@@ -23,7 +21,7 @@ class Node(ABC):
             return MulAndDiv.mul(Value(-1.0), self)
 
     def __add__(self, other) -> Node:
-        if isinstance(other, Numerics):
+        if isinstance(other, Real):
             return self + Value(float(other))
         elif isinstance(other, Node):
             return AddAndSub.add(self, other)
@@ -34,7 +32,7 @@ class Node(ABC):
     __radd__ = __add__
 
     def __sub__(self, other) -> Node:
-        if isinstance(other, Numerics):
+        if isinstance(other, Real):
             return self - Value(float(other))
         elif isinstance(other, Node):
             return AddAndSub.sub(self, other)
@@ -44,7 +42,7 @@ class Node(ABC):
     __rsub__ = __sub__
 
     def __mul__(self, other) -> Node:
-        if isinstance(other, Numerics):
+        if isinstance(other, Real):
             return self * Value(float(other))
         elif isinstance(other, Node):
             return MulAndDiv.mul(self, other)
@@ -52,7 +50,7 @@ class Node(ABC):
             return NotImplemented
 
     def __truediv__(self, other) -> Node:
-        if isinstance(other, Numerics):
+        if isinstance(other, Real):
             return self / Value(float(other))
         elif isinstance(other, Node):
             return MulAndDiv.div(self, other)
@@ -60,7 +58,7 @@ class Node(ABC):
             return NotImplemented
 
     def __pow__(self, other) -> Node:
-        if isinstance(other, Numerics):
+        if isinstance(other, Real):
             return self ** Value(float(other))
         elif isinstance(other, Node):
             return Pow(self, other)
@@ -297,7 +295,7 @@ class AdvancedBinOp(Node, ABC):
 
         for val_value in value.inverted_values:
             found = False
-            for index, pat_value in remaining_pattern.inverted_values:
+            for index, pat_value in enumerate(remaining_pattern.inverted_values):
                 match_result = pat_value.matches(val_value, new_state)
                 if match_result is not None:
                     new_state = match_result
@@ -308,7 +306,7 @@ class AdvancedBinOp(Node, ABC):
                 # because the only way `found` can be True is if one of the loop executed at least once
                 del remaining_pattern.inverted_values[index]
             else:
-                for index, pat_value in remaining_pattern.base_values:
+                for index, pat_value in enumerate(remaining_pattern.base_values):
                     match_result = pat_value.matches(self._invert_value(val_value), new_state)
                     if match_result is not None:
                         new_state = match_result
@@ -364,7 +362,6 @@ class AdvancedBinOp(Node, ABC):
     def _match_wildcards(self, value: AdvancedBinOp, state: MatchResult) -> Optional[MatchResult]:
         match_table = utils.TwoWayMapping()
         for value in value.base_values:
-            wildcard: Wildcard
             for wildcard in self.base_values:
                 if wildcard.matches(value, copy.deepcopy(state)):
                     match_table.add(value, wildcard)
@@ -374,8 +371,6 @@ class AdvancedBinOp(Node, ABC):
             return None
 
         match_table, state = result
-
-        match_table: utils.TwoWayMapping()
 
         for value in list(match_table.keys()):
             if value not in list(match_table.keys()):
@@ -396,9 +391,6 @@ class AdvancedBinOp(Node, ABC):
         elif not isinstance(value, type(self)):
             return None
 
-        self: AdvancedBinOp
-        value: AdvancedBinOp
-
         no_wildcard_self = type(self)(
             list(filter(lambda x: not isinstance(x, Wildcard) and self.identity.matches(x) is None, self.base_values)),
             list(filter(lambda x: not isinstance(x, Wildcard) and self.identity.matches(x) is None,
@@ -415,7 +407,7 @@ class AdvancedBinOp(Node, ABC):
             list(filter(lambda x: isinstance(x, Wildcard), self.inverted_values))
         )
 
-        result = wildcard_self._match_wildcards(remaining_value, state)
+        result = wildcard_self._match_wildcards(remaining_value, state)  # type: ignore
 
         return result
 
@@ -429,7 +421,7 @@ class AdvancedBinOp(Node, ABC):
         return all(c.is_evaluable() for c in itertools.chain(self.base_values, self.inverted_values))
 
     def contains(self, pattern: Node) -> bool:
-        return pattern.matches(self) or any(
+        return pattern.matches(self) is not None or any(
             c.contains(pattern) for c in itertools.chain(self.base_values, self.inverted_values))
 
     def __str__(self):
@@ -438,15 +430,15 @@ class AdvancedBinOp(Node, ABC):
         text += f' {self.base_operation_symbol} '.join(map(str, self.base_values))
 
         if self.inverted_values:
-            text += ' - ' if self.base_values else '- '
+            text += f' {self.inverse_operation_symbol} ' if self.base_values else f'{self.inverse_operation_symbol} '
 
         text += f' {self.inverse_operation_symbol} '.join(map(str, self.inverted_values))
 
         return text + ' )'
 
     def __init__(self, base_values: Iterable[Node] = None, inverted_values: Iterable[Node] = None):
-        self.base_values = []
-        self.inverted_values = []
+        self.base_values: list[Node] = []
+        self.inverted_values: list[Node] = []
 
         if base_values is not None:
             for val in base_values:

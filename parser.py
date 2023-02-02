@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from typing import Optional
+from numbers import Real
 
 import sly
 
@@ -48,6 +49,9 @@ class Lexer(sly.Lexer):
 
     ARG_ASSIGN = r'='
     ARG_SEP = r','
+
+
+_ = lambda x: (lambda x: None)  # fake value to make mypy happy
 
 
 # noinspection PyUnresolvedReferences
@@ -151,11 +155,11 @@ class Parser(sly.Parser):
 
     @_('number wildcard %prec IMPMUL')
     def expr(self, p):
-        return tree.Mul(p.number, p.wildcard)
+        return tree.MulAndDiv.mul(p.number, p.wildcard)
 
     @_('number exprblock %prec IMPMUL')
     def expr(self, p):
-        return tree.Mul(p.number, p.exprblock)
+        return tree.MulAndDiv.mul(p.number, p.exprblock)
 
     @_('LPAREN expr RPAREN')
     def exprblock(self, p):
@@ -165,8 +169,8 @@ _lexer = Lexer()
 _parser = Parser()
 
 
-def parse(data: str | tree.Numerics) -> Optional[tree.Node]:
-    if isinstance(data, tree.Numerics):
+def parse(data: str | Real) -> Optional[tree.Node]:
+    if isinstance(data, Real):
         return tree.Value(float(data))
 
     if not data:

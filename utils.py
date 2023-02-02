@@ -1,5 +1,9 @@
 from collections import defaultdict
+from collections.abc import Hashable, Iterable
+from typing import TypeVar
 
+K = TypeVar("K", bound=Hashable)
+V = TypeVar("V", bound=Hashable)
 
 class TwoWayMapping:
     """
@@ -23,16 +27,16 @@ class TwoWayMapping:
         - `del my_two_way[key]` will remove all relationships with `key`
     """
 
-    def __init__(self, source: dict = None):
-        self._data = {}
-        self._keys_to_values = defaultdict(list)
-        self._values_to_keys = defaultdict(list)
+    def __init__(self, source: dict[K, V] = None):
+        self._data: dict[K, V] = {}
+        self._keys_to_values: defaultdict = defaultdict(list)
+        self._values_to_keys: defaultdict = defaultdict(list)
 
         if source is not None:
             for k, v in source.items():
                 self.add(k, v)
 
-    def add(self, key, value):
+    def add(self, key, value) -> None:
         key_hash = hash(key)
         value_hash = hash(value)
 
@@ -42,21 +46,21 @@ class TwoWayMapping:
         self._keys_to_values[key_hash].append(value_hash)
         self._values_to_keys[value_hash].append(key_hash)
 
-    def get_from_key(self, key):
+    def get_from_key(self, key) -> list[B]:
         h = hash(key)
         if h not in self._keys_to_values.keys():
             return []
 
         return [self._data[h] for h in self._keys_to_values[h]]
 
-    def get_from_value(self, value):
+    def get_from_value(self, value) -> list[V]:
         h = hash(value)
         if h not in self._values_to_keys.keys():
             return []
 
         return [self._data[h] for h in self._values_to_keys[h]]
 
-    def remove_key(self, key):
+    def remove_key(self, key) -> None:
         h = hash(key)
         if h not in self._keys_to_values.keys():
             raise KeyError(f"unknown key {key}")
@@ -67,7 +71,7 @@ class TwoWayMapping:
             if h in self._values_to_keys[v]:
                 self._values_to_keys[v].remove(h)
 
-    def remove_value(self, value):
+    def remove_value(self, value) -> None:
         h = hash(value)
         if h not in self._values_to_keys.keys():
             raise KeyError(f"unknown value {value}")
@@ -78,7 +82,7 @@ class TwoWayMapping:
             if h in self._keys_to_values[v]:
                 self._keys_to_values[v].remove(h)
 
-    def has_relation(self, key, value):
+    def has_relation(self, key, value) -> bool:
         hk = hash(key)
         hv = hash(value)
 
@@ -89,7 +93,7 @@ class TwoWayMapping:
 
         return hv in self._keys_to_values[hk] and hk in self._values_to_keys[hv]
 
-    def remove_relationship(self, key, value):
+    def remove_relationship(self, key, value) -> None:
         hk = hash(key)
         hv = hash(value)
 
@@ -104,7 +108,7 @@ class TwoWayMapping:
         self._keys_to_values[hk].remove(hv)
         self._values_to_keys[hv].remove(hk)
 
-    def __getitem__(self, item):
+    def __getitem__(self, item) -> list[V]:
         return self.get_from_key(item)
 
     def __setitem__(self, key, value):
@@ -113,10 +117,10 @@ class TwoWayMapping:
     def __delitem__(self, key):
         return self.remove_key(key)
 
-    def keys(self):
+    def keys(self) -> Iterable[K]:
         return (self._data[h] for h in self._keys_to_values.keys())
 
-    def values(self):
+    def values(self) -> Iterable[V]:
         return (self._data[h] for h in self._values_to_keys.keys())
 
 

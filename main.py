@@ -1,6 +1,7 @@
 # noinspection PyCompatibility
 from parser import parse, ParsingError
 
+
 def pattern_matching():
     while True:
         try:
@@ -18,6 +19,7 @@ def pattern_matching():
         m = pat.matches(expr)
         print(" =>", f"{m}")
 
+
 def reduce():
     while True:
         try:
@@ -32,6 +34,7 @@ def reduce():
 
         r = expr.reduce()
         print(f"R: {r}")
+
 
 if __name__ == '__main__':
     reduce()

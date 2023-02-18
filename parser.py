@@ -51,7 +51,7 @@ class Lexer(sly.Lexer):
     ARG_SEP = r','
 
 
-_ = lambda x: (lambda x: None)  # fake value to make mypy happy
+_ = lambda _: (lambda _: None)  # fake value to make mypy happy
 
 
 # noinspection PyUnresolvedReferences

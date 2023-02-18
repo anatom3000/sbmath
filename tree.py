@@ -81,7 +81,7 @@ class Node(ABC):
 
     @abstractmethod
     def evaluate(self) -> float:
-        pass
+        pass  # TODO: make Node.evaluable return a Node (for more complex values that can only be approximated like √2)
 
     def matches(self, value: Node, state: MatchResult = None) -> Optional[MatchResult]:
         if state is None:
@@ -322,7 +322,7 @@ class AdvancedBinOp(Node, ABC):
         if (not base_values) and (not inverted_values):
             return Value(eval_result)
 
-        if eval_result == self.identity:
+        if eval_result == self.identity.evaluate():
             if len(base_values) == 1 and len(inverted_values) == 0:
                 return base_values[0]
             if len(base_values) == 0 and len(inverted_values) == 1:
@@ -475,6 +475,8 @@ class AdvancedBinOp(Node, ABC):
                         self.inverted_values))
         )
 
+        value: AdvancedBinOp  # I love Python's type system...
+
         state, remaining_pattern, remaining_value = no_wildcard_self._match_no_wildcards(value, state)
 
         if remaining_pattern.base_values or remaining_pattern.inverted_values:
@@ -588,7 +590,7 @@ class MulAndDiv(AdvancedBinOp):
     @staticmethod
     def _invert_value(value: Node) -> Node:
         if isinstance(value, Value) and -1 <= value.data <= 1:
-            return Value(1.0/value.data)
+            return Value(1.0 / value.data)
 
         return MulAndDiv.div(Value(1.0), value)
 
@@ -640,8 +642,6 @@ class Pow(BinOp):
             return reduced_values[0]
 
         return Pow(*reduced_values[::-1])
-
-
 
     @staticmethod
     def evaluator(*values: float) -> float:

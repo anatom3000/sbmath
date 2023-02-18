@@ -620,7 +620,28 @@ class MulAndDiv(AdvancedBinOp):
 class Pow(BinOp):
     name = '^'
 
-    # TODO: implement Node.reduce
+    def reduce(self) -> Node:
+        reduced_values = []
+        can_reduce_evaluable = True
+        for value in self.values[::-1]:
+            value = value.reduce()
+            evaluable = value.is_evaluable()
+
+            if not evaluable:
+                can_reduce_evaluable = False
+
+            if can_reduce_evaluable and evaluable and reduced_values:
+                reduced_values[-1] = Value((value ** reduced_values[-1]).evaluate())
+
+            else:
+                reduced_values.append(value)
+
+        if len(reduced_values) == 1 and can_reduce_evaluable:
+            return reduced_values[0]
+
+        return Pow(*reduced_values[::-1])
+
+
 
     @staticmethod
     def evaluator(*values: float) -> float:

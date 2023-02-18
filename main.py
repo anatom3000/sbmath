@@ -30,7 +30,8 @@ def reduce():
             continue
         print(" =>", expr)
 
-        print(f"R: {expr.reduce()}")
+        r = expr.reduce()
+        print(f"R: {r}")
 
 if __name__ == '__main__':
     reduce()

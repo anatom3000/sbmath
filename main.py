@@ -1,10 +1,8 @@
 # noinspection PyCompatibility
 from parser import parse, ParsingError
 
-if __name__ == '__main__':
-    a = True
-    while a:
-
+def pattern_matching():
+    while True:
         try:
             expr = parse(input("E: "))
             print(" =>", expr)
@@ -19,3 +17,20 @@ if __name__ == '__main__':
 
         m = pat.matches(expr)
         print(" =>", f"{m}")
+
+def reduce():
+    while True:
+        try:
+            expr = parse(input("E: "))
+        except ParsingError:
+            print(" => Something went wrong...")
+            continue
+
+        if expr is None:
+            continue
+        print(" =>", expr)
+
+        print(f"R: {expr.reduce()}")
+
+if __name__ == '__main__':
+    reduce()

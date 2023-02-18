@@ -5,6 +5,7 @@ from typing import TypeVar
 K = TypeVar("K", bound=Hashable)
 V = TypeVar("V", bound=Hashable)
 
+
 class TwoWayMapping:
     """
     A data structure similar to a dict but you can retrieve the keys holding a specific value and vice versa.
@@ -46,14 +47,14 @@ class TwoWayMapping:
         self._keys_to_values[key_hash].append(value_hash)
         self._values_to_keys[value_hash].append(key_hash)
 
-    def get_from_key(self, key) -> list[B]:
+    def get_from_key(self, key) -> list[V]:
         h = hash(key)
         if h not in self._keys_to_values.keys():
             return []
 
         return [self._data[h] for h in self._keys_to_values[h]]
 
-    def get_from_value(self, value) -> list[V]:
+    def get_from_value(self, value) -> list[K]:
         h = hash(value)
         if h not in self._values_to_keys.keys():
             return []

@@ -147,11 +147,11 @@ class Parser(sly.Parser):
 
     @_('exprblock exprblock %prec IMPMUL')
     def expr(self, p):
-        return tree.Mul(p.exprblock0, p.exprblock1)
+        return tree.MulAndDiv.mul(p.exprblock0, p.exprblock1)
 
     @_('number ident %prec IMPMUL')
     def expr(self, p):
-        return tree.Mul(p.number, p.ident)
+        return tree.MulAndDiv.mul(p.number, p.ident)
 
     @_('number wildcard %prec IMPMUL')
     def expr(self, p):

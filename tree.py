@@ -3,6 +3,7 @@ from __future__ import annotations
 import copy
 import itertools
 from abc import ABC, abstractmethod
+from collections import defaultdict
 from collections.abc import Iterable
 from dataclasses import dataclass, field
 from numbers import Real
@@ -10,9 +11,8 @@ from typing import Optional
 
 import utils
 
+
 class Node(ABC):
-    def __hash__(self):
-        return hash(id(self))
 
     def __neg__(self):
         if isinstance(self, Value):
@@ -49,6 +49,8 @@ class Node(ABC):
         else:
             return NotImplemented
 
+    __rmul__ = __mul__
+
     def __truediv__(self, other) -> Node:
         if isinstance(other, Real):
             return self / Value(float(other))
@@ -56,6 +58,8 @@ class Node(ABC):
             return MulAndDiv.div(self, other)
         else:
             return NotImplemented
+
+    __rtruediv__ = __truediv__
 
     def __pow__(self, other) -> Node:
         if isinstance(other, Real):
@@ -101,6 +105,10 @@ class Node(ABC):
         return new
 
     @abstractmethod
+    def reduce(self) -> Node:
+        pass
+
+    @abstractmethod
     def contains(self, pattern: Node) -> bool:
         pass
 
@@ -112,9 +120,18 @@ class Leaf(Node, ABC):
     def __eq__(self, other):
         return isinstance(other, type(self)) and self.data == other.data
 
+    def __hash__(self):
+        return hash(f"{type(self)}({hash(self.data)})")
+
+    def __str__(self):
+        return str(self.data)
+
     @abstractmethod
     def is_evaluable(self) -> bool:
         pass
+
+    def reduce(self) -> Node:
+        return self
 
     def contains(self, pattern: Node) -> bool:
         return pattern.matches(self) is not None
@@ -125,9 +142,6 @@ class Leaf(Node, ABC):
     def __init__(self, data):
         super().__init__()
         self.data = data
-
-    def __str__(self) -> str:
-        return f"{self.__class__.__name__}({self.data if self.data is not None else ''})"
 
 
 class Value(Leaf):
@@ -145,9 +159,6 @@ class Value(Leaf):
 
 
 class Variable(Leaf):
-    def __hash__(self):
-        return hash(id(self))
-
     def is_evaluable(self) -> bool:
         return False
 
@@ -195,6 +206,9 @@ class Wildcard(Node):
 
     def evaluate(self) -> float:
         raise TypeError("can't evaluate a wildcard")
+
+    def reduce(self) -> Node:
+        return self
 
     def __str__(self):
         text = f"[{self.name}, "
@@ -259,6 +273,68 @@ class AdvancedBinOp(Node, ABC):
     def _invert_value(value: Node) -> Node:
         pass
 
+    @staticmethod
+    @abstractmethod
+    def _repeat_value(value: Node, times: int) -> Node:
+        pass
+
+    @staticmethod
+    @abstractmethod
+    def _should_invert_value(value: float) -> bool:
+        pass
+
+    def reduce(self) -> Node:
+        # FIXME: (2x).reduce() == x
+
+        eval_part = type(self)(
+            filter(lambda x: x.is_evaluable(), self.base_values),
+            filter(lambda x: x.is_evaluable(), self.inverted_values)
+        )
+
+        eval_result = eval_part.evaluate()
+
+        value_occurences = defaultdict(int)
+
+        for value in filter(lambda x: not x.is_evaluable(), self.base_values):
+            value_occurences[value.reduce()] += 1
+
+        for value in filter(lambda x: not x.is_evaluable(), self.inverted_values):
+            value_occurences[value.reduce()] -= 1
+
+        base_values = []
+        inverted_values = []
+
+        for key, value in value_occurences.items():
+            if value == 0:
+                continue
+
+            elif value == 1:
+                base_values.append(key)
+
+            elif value == -1:
+                inverted_values.append(key)
+
+            elif value > 1:
+                base_values.append(self._repeat_value(key, value))
+            else:
+                inverted_values.append(self._repeat_value(self._invert_value(key), value))
+
+        if (not base_values) and (not inverted_values):
+            return Value(eval_result)
+
+        if eval_result == self.identity:
+            if len(base_values) == 1 and len(inverted_values) == 0:
+                return base_values[0]
+            if len(base_values) == 0 and len(inverted_values) == 1:
+                return inverted_values[0]
+
+        elif self._should_invert_value(eval_result):
+            inverted_values.append(self._invert_value(Value(eval_result)))
+        else:
+            base_values.append(Value(eval_result))
+
+        return type(self)(base_values, inverted_values)
+
     def _match_evaluable(self, value: Node, state: MatchResult = None) -> Optional[MatchResult]:
         return state if self.evaluate() == value.evaluate() else None
 
@@ -319,7 +395,8 @@ class AdvancedBinOp(Node, ABC):
 
         return new_state, remaining_pattern, remaining_value
 
-    def _remove_wildcard_match(self, value: Node, wildcard: Wildcard, match_table: utils.TwoWayMapping, state: MatchResult) \
+    def _remove_wildcard_match(self, value: Node, wildcard: Wildcard, match_table: utils.TwoWayMapping,
+                               state: MatchResult) \
             -> (utils.TwoWayMapping, MatchResult):
 
         similars = [similar for similar in match_table.get_from_value(wildcard)
@@ -375,7 +452,8 @@ class AdvancedBinOp(Node, ABC):
         for value in list(match_table.keys()):
             if value not in list(match_table.keys()):
                 continue
-            match_table, state = self._remove_wildcard_match(value, match_table.get_from_key(value)[0], match_table, state)
+            match_table, state = self._remove_wildcard_match(value, match_table.get_from_key(value)[0], match_table,
+                                                             state)
 
         if len(list(match_table.keys())) != 0:
             return None
@@ -459,12 +537,22 @@ class AdvancedBinOp(Node, ABC):
 
 class AddAndSub(AdvancedBinOp):
     base_operation_symbol = '+'
+
     inverse_operation_symbol = '-'
+
     identity = Value(0.0)
 
     @staticmethod
     def _invert_value(value: Node) -> Node:
         return -value
+
+    @staticmethod
+    def _repeat_value(value: Node, times: int) -> Node:
+        return MulAndDiv.mul(Value(times), value)
+
+    @staticmethod
+    def _should_invert_value(value: float) -> bool:
+        return value < 0.0
 
     @classmethod
     def add(cls, *values: Node):
@@ -494,8 +582,19 @@ class MulAndDiv(AdvancedBinOp):
     identity = Value(1.0)
 
     @staticmethod
+    def _repeat_value(value: Node, times: int) -> Node:
+        return Pow(Value(times), value)
+
+    @staticmethod
     def _invert_value(value: Node) -> Node:
+        if isinstance(value, Value) and -1 <= value.data <= 1:
+            return Value(1.0/value.data)
+
         return MulAndDiv.div(Value(1.0), value)
+
+    @staticmethod
+    def _should_invert_value(value: float) -> bool:
+        return -1 < value < 1
 
     @classmethod
     def mul(cls, *values: Node):
@@ -509,7 +608,7 @@ class MulAndDiv(AdvancedBinOp):
             return cls(inverted_values=values)
 
     def evaluate(self) -> float:
-        result = 0.0
+        result = 1.0
         for c in self.base_values:
             result *= c.evaluate()
         for c in self.inverted_values:
@@ -520,6 +619,8 @@ class MulAndDiv(AdvancedBinOp):
 
 class Pow(BinOp):
     name = '^'
+
+    # TODO: implement Node.reduce
 
     @staticmethod
     def evaluator(*values: float) -> float:

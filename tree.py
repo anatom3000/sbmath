@@ -22,50 +22,81 @@ class Node(ABC):
 
     def __add__(self, other) -> Node:
         if isinstance(other, Real):
-            return self + Value(float(other))
+            return AddAndSub.add(self, Value(float(other)))
         elif isinstance(other, Node):
             return AddAndSub.add(self, other)
         else:
             return NotImplemented
 
-    # TODO: fix (3 + Node) => Add(Node(...), 3) (should be (3 + Node) => Add(3, Node(...))
-    __radd__ = __add__
+    def __radd__(self, other) -> Node:
+        if isinstance(other, Real):
+            return AddAndSub.add(Value(float(other)), self)
+        elif isinstance(other, Node):
+            return AddAndSub.add(other, self)
+        else:
+            return NotImplemented
 
     def __sub__(self, other) -> Node:
         if isinstance(other, Real):
-            return self - Value(float(other))
+            return AddAndSub.sub(self, Value(float(other)))
         elif isinstance(other, Node):
             return AddAndSub.sub(self, other)
         else:
             return NotImplemented
 
-    __rsub__ = __sub__
+    def __rsub__(self, other) -> Node:
+        if isinstance(other, Real):
+            return AddAndSub.sub(Value(float(other)), self)
+        elif isinstance(other, Node):
+            return AddAndSub.sub(other, self)
+        else:
+            return NotImplemented
 
     def __mul__(self, other) -> Node:
         if isinstance(other, Real):
-            return self * Value(float(other))
+            return MulAndDiv.mul(self, Value(float(other)))
         elif isinstance(other, Node):
             return MulAndDiv.mul(self, other)
         else:
             return NotImplemented
 
-    __rmul__ = __mul__
+    def __rmul__(self, other) -> Node:
+        if isinstance(other, Real):
+            return MulAndDiv.mul(Value(float(other)), self)
+        elif isinstance(other, Node):
+            return MulAndDiv.mul(other, self)
+        else:
+            return NotImplemented
 
     def __truediv__(self, other) -> Node:
         if isinstance(other, Real):
-            return self / Value(float(other))
+            return MulAndDiv.div(self, Value(float(other)))
         elif isinstance(other, Node):
             return MulAndDiv.div(self, other)
         else:
             return NotImplemented
 
-    __rtruediv__ = __truediv__
+    def __rtruediv__(self, other) -> Node:
+        if isinstance(other, Real):
+            return MulAndDiv.div(Value(float(other)), self)
+        elif isinstance(other, Node):
+            return MulAndDiv.div(other, self)
+        else:
+            return NotImplemented
 
     def __pow__(self, other) -> Node:
         if isinstance(other, Real):
-            return self ** Value(float(other))
+            return Pow(self, Value(float(other)))
         elif isinstance(other, Node):
             return Pow(self, other)
+        else:
+            return NotImplemented
+
+    def __rpow__(self, other) -> Node:
+        if isinstance(other, Real):
+            return Pow(Value(float(other)), self)
+        elif isinstance(other, Node):
+            return Pow(other, self)
         else:
             return NotImplemented
 

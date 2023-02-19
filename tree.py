@@ -199,7 +199,7 @@ class Variable(Leaf):
 
 class Wildcard(Node):
     def contains(self, pattern: Node) -> bool:
-        return False
+        return pattern.matches(self) is not None
 
     def _match_contraints(self, value: Node) -> bool:
         if "eval" in self.constraints.keys():
@@ -273,7 +273,7 @@ class BinOp(Node, ABC):
         return all(c.is_evaluable() for c in self.values)
 
     def contains(self, pattern: Node) -> bool:
-        return any(c.contains(pattern) for c in self.values)
+        return pattern.matches(self) is not None or any(c.contains(pattern) for c in self.values)
 
     def __init__(self, *values):
         self.values = values
@@ -620,6 +620,7 @@ class AddAndSub(AdvancedBinOp):
 
     def __radd__(self, other):
         if isinstance(other, Real):
+            # noinspection PyTypeChecker
             return AddAndSub([Value(other)] + self.base_values, self.inverted_values)
         elif isinstance(other, Node):
             return AddAndSub([other] + self.base_values, self.inverted_values)
@@ -636,6 +637,7 @@ class AddAndSub(AdvancedBinOp):
 
     def __rsub__(self, other):
         if isinstance(other, Real):
+            # noinspection PyTypeChecker
             return AddAndSub([Value(other)] + self.inverted_values, self.base_values)
         elif isinstance(other, Node):
             return AddAndSub([other] + self.inverted_values, self.base_values)
@@ -697,6 +699,7 @@ class MulAndDiv(AdvancedBinOp):
 
     def __rmul__(self, other):
         if isinstance(other, Real):
+            # noinspection PyTypeChecker
             return MulAndDiv([Value(other)] + self.base_values, self.inverted_values)
         elif isinstance(other, Node):
             return MulAndDiv([other] + self.base_values, self.inverted_values)
@@ -713,6 +716,7 @@ class MulAndDiv(AdvancedBinOp):
 
     def __rsub__(self, other):
         if isinstance(other, Real):
+            # noinspection PyTypeChecker
             return MulAndDiv([Value(other)] + self.inverted_values, self.base_values)
         elif isinstance(other, Node):
             return MulAndDiv([other] + self.inverted_values, self.base_values)

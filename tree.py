@@ -15,10 +15,7 @@ import utils
 class Node(ABC):
 
     def __neg__(self):
-        if isinstance(self, Value):
-            return Value(-self.data)
-        else:
-            return MulAndDiv.mul(Value(-1.0), self)
+        return -1.0 * self
 
     def __add__(self, other) -> Node:
         if isinstance(other, Real):
@@ -176,6 +173,9 @@ class Leaf(Node, ABC):
 
 
 class Value(Leaf):
+    def __neg__(self):
+        return Value(-self.data)
+
     def __hash__(self):
         return hash(self.data)
 
@@ -607,6 +607,41 @@ class AddAndSub(AdvancedBinOp):
 
         return result
 
+    def __neg__(self):
+        return AddAndSub(self.inverted_values, self.base_values)
+
+    def __add__(self, other):
+        if isinstance(other, Real):
+            return AddAndSub(self.base_values + [Value(other)], self.inverted_values)
+        elif isinstance(other, Node):
+            return AddAndSub(self.base_values + [other], self.inverted_values)
+        else:
+            return NotImplemented
+
+    def __radd__(self, other):
+        if isinstance(other, Real):
+            return AddAndSub([Value(other)] + self.base_values, self.inverted_values)
+        elif isinstance(other, Node):
+            return AddAndSub([other] + self.base_values, self.inverted_values)
+        else:
+            return NotImplemented
+
+    def __sub__(self, other):
+        if isinstance(other, Real):
+            return AddAndSub(self.base_values, self.inverted_values + [Value(other)])
+        elif isinstance(other, Node):
+            return AddAndSub(self.base_values, self.inverted_values + [other])
+        else:
+            return NotImplemented
+
+    def __rsub__(self, other):
+        if isinstance(other, Real):
+            return AddAndSub([Value(other)] + self.inverted_values, self.base_values)
+        elif isinstance(other, Node):
+            return AddAndSub([other] + self.inverted_values, self.base_values)
+        else:
+            return NotImplemented
+
 
 class MulAndDiv(AdvancedBinOp):
     base_operation_symbol = '*'
@@ -649,9 +684,60 @@ class MulAndDiv(AdvancedBinOp):
 
         return result
 
+    def __neg__(self):
+        return MulAndDiv(self.base_values + [Value(-1.0)], self.inverted_values)
+
+    def __mul__(self, other):
+        if isinstance(other, Real):
+            return MulAndDiv(self.base_values + [Value(other)], self.inverted_values)
+        elif isinstance(other, Node):
+            return MulAndDiv(self.base_values + [other], self.inverted_values)
+        else:
+            return NotImplemented
+
+    def __rmul__(self, other):
+        if isinstance(other, Real):
+            return MulAndDiv([Value(other)] + self.base_values, self.inverted_values)
+        elif isinstance(other, Node):
+            return MulAndDiv([other] + self.base_values, self.inverted_values)
+        else:
+            return NotImplemented
+
+    def __div__(self, other):
+        if isinstance(other, Real):
+            return MulAndDiv(self.base_values, self.inverted_values + [Value(other)])
+        elif isinstance(other, Node):
+            return MulAndDiv(self.base_values, self.inverted_values + [other])
+        else:
+            return NotImplemented
+
+    def __rsub__(self, other):
+        if isinstance(other, Real):
+            return MulAndDiv([Value(other)] + self.inverted_values, self.base_values)
+        elif isinstance(other, Node):
+            return MulAndDiv([other] + self.inverted_values, self.base_values)
+        else:
+            return NotImplemented
+
 
 class Pow(BinOp):
     name = '^'
+
+    def __pow__(self, other) -> Node:
+        if isinstance(other, Real):
+            return Pow(*self.values, Value(float(other)))
+        elif isinstance(other, Node):
+            return Pow(*self.values, other)
+        else:
+            return NotImplemented
+
+    def __rpow__(self, other) -> Node:
+        if isinstance(other, Real):
+            return Pow(Value(float(other)), *self.values)
+        elif isinstance(other, Node):
+            return Pow(other, *self.values)
+        else:
+            return NotImplemented
 
     def reduce(self) -> Node:
         reduced_values = []

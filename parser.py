@@ -72,30 +72,27 @@ class Parser(sly.Parser):
     # Grammar rules and actions
     @_('expr PLUS expr')
     def expr(self, p):
-        return tree.AddAndSub.add(p.expr0, p.expr1)
+        return p.expr0 + p.expr1
 
     @_('expr MINUS expr')
     def expr(self, p):
-        return tree.AddAndSub.sub(p.expr0, p.expr1)
+        return p.expr0 - p.expr1
 
     @_('expr TIMES expr')
     def expr(self, p):
-        return tree.MulAndDiv.mul(p.expr0, p.expr1)
+        return p.expr0 * p.expr1
 
     @_('expr DIVIDE expr')
     def expr(self, p):
-        return tree.MulAndDiv.div(p.expr0, p.expr1)
+        return p.expr0 / p.expr1
 
     @_('expr POW expr')
     def expr(self, p):
-        return tree.Pow(p.expr0, p.expr1)
+        return p.expr0 ** p.expr1
 
     @_('MINUS expr %prec UMINUS')
     def expr(self, p):
-        if isinstance(p.expr, tree.Value):
-            return tree.Value(-p.expr.data)
-        else:
-            return tree.MulAndDiv.mul(tree.Value(-1.0), p.expr)
+        return -p.expr
 
     @_('PLUS expr %prec UMINUS')
     def expr(self, p):
@@ -147,19 +144,19 @@ class Parser(sly.Parser):
 
     @_('exprblock exprblock %prec IMPMUL')
     def expr(self, p):
-        return tree.MulAndDiv.mul(p.exprblock0, p.exprblock1)
+        return p.exprblock0 * p.exprblock1
 
     @_('number ident %prec IMPMUL')
     def expr(self, p):
-        return tree.MulAndDiv.mul(p.number, p.ident)
+        return p.number * p.ident
 
     @_('number wildcard %prec IMPMUL')
     def expr(self, p):
-        return tree.MulAndDiv.mul(p.number, p.wildcard)
+        return p.number * p.wildcard
 
     @_('number exprblock %prec IMPMUL')
     def expr(self, p):
-        return tree.MulAndDiv.mul(p.number, p.exprblock)
+        return p.number * p.exprblock
 
     @_('LPAREN expr RPAREN')
     def exprblock(self, p):

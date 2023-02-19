@@ -37,4 +37,4 @@ def reduce():
 
 
 if __name__ == '__main__':
-    reduce()
+    pattern_matching()

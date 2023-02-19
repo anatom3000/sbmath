@@ -95,7 +95,7 @@ class Parser(sly.Parser):
         if isinstance(p.expr, tree.Value):
             return tree.Value(-p.expr.data)
         else:
-            return tree.Mul(tree.Value(-1.0), p.expr)
+            return tree.MulAndDiv.mul(tree.Value(-1.0), p.expr)
 
     @_('PLUS expr %prec UMINUS')
     def expr(self, p):

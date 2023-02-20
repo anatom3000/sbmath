@@ -2,12 +2,16 @@ from __future__ import annotations
 
 import copy
 import itertools
-from abc import ABC, abstractmethod
 from collections import defaultdict
+
+# typing modules
 from collections.abc import Iterable
-from dataclasses import dataclass, field
-from numbers import Real
 from typing import Optional
+from numbers import Real
+
+# abstraction modules
+from abc import ABC, abstractmethod
+from dataclasses import dataclass, field
 
 import utils
 
@@ -217,8 +221,17 @@ class Wildcard(Node):
         if self.name == '_':
             return state if self._match_contraints(value) else None
 
-        if self.name in state.wildcards.keys() and value.matches(state.wildcards[self.name]) is None:
-            return None
+        if self.name in state.wildcards.keys():
+            # TODO: see AdvBinOp matching so that failed matching returns None immediately
+            print(f"careful, my name {self.name} was here before...")
+            print(f"the suspect: {state.wildcards[self.name]}")
+            print(f"the noob: {value}")
+            print(f"state1: {state}")
+            print(f"=> {value.matches(state.wildcards[self.name])}")
+            print(f"state2: {state}")
+            if value.matches(state.wildcards[self.name]) is None:
+                print("ohno")
+                return None
 
         if self._match_contraints(value):
             state.wildcards[self.name] = value
@@ -315,7 +328,6 @@ class AdvancedBinOp(Node, ABC):
         pass
 
     def reduce(self) -> Node:
-        # FIXME: (2x).reduce() == x
 
         eval_part = type(self)(
             filter(lambda x: x.is_evaluable(), self.base_values),

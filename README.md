@@ -19,10 +19,10 @@ todo!();
 
 ### API Progress
 
-| Protocols  | `Node.reduce` | `Node.matches` | `Node.contains` | `Node.replace` |
-| ----------:|:-------------:|:--------------:|:---------------:|:--------------:|
-| `AdvBinOp` | Yes           | [FIXME] Yes    | Yes             | Yes            |
-| `Pow`      | Yes           | TODO           | Yes             | Yes            |
-| `Value`    | Yes           | Yes            | Yes             | Yes            |
-| `Variable` | Yes           | Yes            | Yes             | Yes            |
-| `Wildcard` | Yes           | [FIXME?] Yes   | Yes             | Yes            |
+|  Protocols | `Node.reduce` | `Node.matches` | `Node.contains` | `Node.replace` |
+|-----------:|:-------------:|:--------------:|:---------------:|:--------------:|
+| `AdvBinOp` |      Yes      |      Yes       |       Yes       |      Yes       |
+|      `Pow` |      Yes      |      TODO      |       Yes       |      Yes       |
+|    `Value` |      Yes      |      Yes       |       Yes       |      Yes       |
+| `Variable` |      Yes      |      Yes       |       Yes       |      Yes       |
+| `Wildcard` |      Yes      |      Yes       |       Yes       |      Yes       |

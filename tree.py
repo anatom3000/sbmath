@@ -153,7 +153,7 @@ class Leaf(Node, ABC):
         return isinstance(other, type(self)) and self.data == other.data
 
     def __hash__(self):
-        return hash(f"{type(self)}({hash(self.data)})")
+        return hash(str(id(self)))
 
     def __str__(self):
         return str(self.data)
@@ -181,7 +181,7 @@ class Value(Leaf):
         return Value(-self.data)
 
     def __hash__(self):
-        return hash(self.data)
+        return hash(str(id(self)))
 
     def __eq__(self, other):
         return isinstance(other, Node) and other.is_evaluable() and other.evaluate() == self.data
@@ -221,17 +221,8 @@ class Wildcard(Node):
         if self.name == '_':
             return state if self._match_contraints(value) else None
 
-        if self.name in state.wildcards.keys():
-            # TODO: see AdvBinOp matching so that failed matching returns None immediately
-            print(f"careful, my name {self.name} was here before...")
-            print(f"the suspect: {state.wildcards[self.name]}")
-            print(f"the noob: {value}")
-            print(f"state1: {state}")
-            print(f"=> {value.matches(state.wildcards[self.name])}")
-            print(f"state2: {state}")
-            if value.matches(state.wildcards[self.name]) is None:
-                print("ohno")
-                return None
+        if self.name in state.wildcards.keys() and value.matches(state.wildcards[self.name]) is None:
+            return None
 
         if self._match_contraints(value):
             state.wildcards[self.name] = value
@@ -440,20 +431,29 @@ class AdvancedBinOp(Node, ABC):
 
     def _remove_wildcard_match(self, value: Node, wildcard: Wildcard, match_table: utils.TwoWayMapping,
                                state: MatchResult) \
-            -> (utils.TwoWayMapping, MatchResult):
+            -> Optional[utils.TwoWayMapping, MatchResult]:
 
         similars = [similar for similar in match_table.get_from_value(wildcard)
                     if len(list(match_table.get_from_key(similar))) == 1]
 
         if len(similars) == 0:
             state = wildcard.matches(value, state)
+            if state is None:
+                return None
+
             match_table.remove_key(value)
 
         elif len(similars) == 1:
             state = wildcard.matches(similars[0], state)
+            if state is None:
+                return None
+
             match_table.remove_key(similars[0])
         else:
             state = wildcard.matches(type(self)(base_values=similars), state)
+            if state is None:
+                return None
+
             for s in similars:
                 match_table.remove_key(s)
 
@@ -475,16 +475,26 @@ class AdvancedBinOp(Node, ABC):
                 if len(matches) == 0:
                     return None
                 elif len(matches) == 1:
-                    match_table, state = self._remove_wildcard_match(value, matches[0], match_table, state)
+                    r = self._remove_wildcard_match(value, matches[0], match_table, state)
+                    if r is None:
+                        return None
+                    match_table, state = r
 
         return match_table, state
 
     def _match_wildcards(self, value: AdvancedBinOp, state: MatchResult) -> Optional[MatchResult]:
+
         match_table = utils.TwoWayMapping()
         for value in value.base_values:
+            found_one = False
             for wildcard in self.base_values:
-                if wildcard.matches(value, copy.deepcopy(state)):
+                r = wildcard.matches(value, copy.deepcopy(state))
+                if r:
+                    found_one = True
                     match_table.add(value, wildcard)
+
+            if not found_one:
+                return None
 
         result = self._clean_up_single_wildcards(match_table, state)
         if result is None:
@@ -495,8 +505,10 @@ class AdvancedBinOp(Node, ABC):
         for value in list(match_table.keys()):
             if value not in list(match_table.keys()):
                 continue
-            match_table, state = self._remove_wildcard_match(value, match_table.get_from_key(value)[0], match_table,
-                                                             state)
+            r = self._remove_wildcard_match(value, match_table.get_from_key(value)[0], match_table, state)
+            if r is None:
+                return None
+            match_table, state = r
 
         if len(list(match_table.keys())) != 0:
             return None

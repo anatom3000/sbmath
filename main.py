@@ -55,6 +55,7 @@ def reduce():
         r = expr.reduce()
         print(f"R: {r}")
 
+
 def find_and_replace():
     while True:
         try:

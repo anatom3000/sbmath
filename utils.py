@@ -28,6 +28,12 @@ class TwoWayMapping:
         - `del my_two_way[key]` will remove all relationships with `key`
     """
 
+    def __str__(self):
+        k2v = {k: self.get_from_key(k) for k in self.keys()}
+        v2k = {v: self.get_from_key(v) for v in self.values()}
+
+        return f"{k2v} <=> {v2k}"
+
     def __init__(self, source: dict[K, V] = None):
         self._data: dict[K, V] = {}
         self._keys_to_values: defaultdict = defaultdict(list)

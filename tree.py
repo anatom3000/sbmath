@@ -107,6 +107,9 @@ class Node(ABC):
     def __repr__(self) -> str:
         return self.__str__()
 
+    def __hash__(self):
+        return hash(str(self))
+
     @abstractmethod
     def is_evaluable(self) -> bool:
         pass
@@ -153,7 +156,7 @@ class Leaf(Node, ABC):
         return isinstance(other, type(self)) and self.data == other.data
 
     def __hash__(self):
-        return hash(str(id(self)))
+        return hash(str(self))
 
     def __str__(self):
         return str(self.data)
@@ -546,6 +549,9 @@ class AdvancedBinOp(Node, ABC):
 
         return text + ' )'
 
+    def __hash__(self):
+        return hash(str(self))
+
     def __init__(self, base_values: Iterable[Node] = None, inverted_values: Iterable[Node] = None):
         self.base_values: list[Node] = []
         self.inverted_values: list[Node] = []
@@ -767,7 +773,6 @@ class BinOp(Node, ABC):
 
         return right_match
 
-
     # noinspection PyProtectedMember
     def _replace_identifiers(self, match_result: MatchResult) -> Node:
         return type(self)(self.left._replace_identifiers(match_result), self.left._replace_identifiers(match_result))
@@ -795,6 +800,9 @@ class BinOp(Node, ABC):
 
     def __str__(self):
         return f"{self.left} {self.name} {self.right}"
+
+    def __hash__(self):
+        return hash(str(self))
 
 
 class Pow(BinOp):

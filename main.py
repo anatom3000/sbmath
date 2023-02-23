@@ -52,6 +52,7 @@ def reduce(print_back=False):
 
         if expr is None:
             continue
+
         if print_back: print(" =>", expr)
 
         r = expr.reduce()
@@ -80,4 +81,4 @@ def find_and_replace(print_back=False):
 
 
 if __name__ == '__main__':
-    reduce()
+    pattern_matching()

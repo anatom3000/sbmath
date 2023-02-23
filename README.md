@@ -22,7 +22,7 @@ todo!();
 |  Protocols | `Node.reduce` | `Node.matches` | `Node.contains` | `Node.replace` |
 |-----------:|:-------------:|:--------------:|:---------------:|:--------------:|
 | `AdvBinOp` |      Yes      |      Yes       |       Yes       |      Yes       |
-|      `Pow` |      Yes      |      TODO      |       Yes       |      Yes       |
+|      `Pow` |      Yes      |      Yes       |       Yes       |      Yes       |
 |    `Value` |      Yes      |      Yes       |       Yes       |      Yes       |
 | `Variable` |      Yes      |      Yes       |       Yes       |      Yes       |
 | `Wildcard` |      Yes      |      Yes       |       Yes       |      Yes       |

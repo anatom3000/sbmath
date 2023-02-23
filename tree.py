@@ -756,7 +756,17 @@ class BinOp(Node, ABC):
         if not isinstance(reduced_value, type(self)):
             return None
 
-        raise NotImplementedError("todo")
+        left_match = reduced_self.left.matches(reduced_value.left, state)
+        if left_match is None:
+            return None
+
+        right_match = reduced_self.right.matches(reduced_value.right, left_match)
+
+        if right_match is None:
+            return None
+
+        return right_match
+
 
     # noinspection PyProtectedMember
     def _replace_identifiers(self, match_result: MatchResult) -> Node:

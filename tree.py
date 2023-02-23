@@ -183,6 +183,12 @@ class Value(Leaf):
     def __hash__(self):
         return hash(str(id(self)))
 
+    def __str__(self):
+        if self.data % 1 == 0:
+            return str(int(self.data))
+
+        return str(self.data)
+
     def __eq__(self, other):
         return isinstance(other, Node) and other.is_evaluable() and other.evaluate() == self.data
 
@@ -788,6 +794,7 @@ class Pow(BinOp):
     @staticmethod
     def evaluator(left: float, right: float) -> float:
         return left ** right
+
 
 @dataclass
 class MatchResult:

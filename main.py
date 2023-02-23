@@ -80,4 +80,4 @@ def find_and_replace(print_back=False):
 
 
 if __name__ == '__main__':
-    reduce()
+    pattern_matching(True)

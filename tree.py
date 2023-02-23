@@ -719,88 +719,75 @@ class MulAndDiv(AdvancedBinOp):
 
 class BinOp(Node, ABC):
     name: str
+    identity: Node
+
+    def reduce(self) -> Node:
+        reduced_left = self.left.reduce()
+        reduced_right = self.right.reduce()
+
+        if reduced_right.is_evaluable():
+            if reduced_left.is_evaluable():
+                return Value(type(self)(reduced_left, reduced_right).evaluate())
+
+            if reduced_right.evaluate() == self.identity.evaluate():
+                return reduced_left
+
+        return type(self)(reduced_left, reduced_right)
 
     def matches(self, value: Node, state: MatchResult = None) -> Optional[MatchResult]:
-        if self.is_evaluable() and value.is_evaluable() and self.evaluate() == value.evaluate():
-            return state
-        else:
+        if state is None:
+            state = MatchResult()
+
+        reduced_self = self.reduce()
+        reduced_value = value.reduce()
+
+        if not isinstance(reduced_self, type(self)):
+            return reduced_self.matches(reduced_value, state)
+
+        if reduced_self.is_evaluable() and reduced_value.is_evaluable():
+            return state if reduced_self.evaluate() == reduced_value.evaluate() else None
+
+        if not isinstance(reduced_value, type(self)):
             return None
+
+        raise NotImplementedError("todo")
 
     # noinspection PyProtectedMember
     def _replace_identifiers(self, match_result: MatchResult) -> Node:
-        return type(self)(*(x._replace_identifiers(match_result) for x in self.values))
+        return type(self)(self.left._replace_identifiers(match_result), self.left._replace_identifiers(match_result))
 
     def is_evaluable(self) -> bool:
-        return all(c.is_evaluable() for c in self.values)
+        return self.left.is_evaluable() and self.right.is_evaluable()
 
     def contains(self, pattern: Node) -> bool:
-        return pattern.matches(self) is not None or any(c.contains(pattern) for c in self.values)
+        return pattern.matches(self) is not None or self.left.contains(pattern) or self.right.contains(pattern)
 
-    def __init__(self, *values):
-        self.values = values
+    def __init__(self, left: Node, right: Node):
+        self.left = left
+        self.right = right
 
     @staticmethod
     @abstractmethod
-    def evaluator(*values: float) -> float:
+    def evaluator(left: float, right: float) -> float:
         pass
 
     def evaluate(self) -> float:
         if not self.is_evaluable():
             raise ValueError("cannot evaluate expression")
 
-        return self.evaluator(*(v.evaluate() for v in self.values))
+        return self.evaluator(self.left.evaluate(), self.right.evaluate())
 
     def __str__(self):
-        return '( ' + f' {self.name} '.join(map(lambda x: str(x), self.values)) + ' )'
+        return f"{self.left} {self.name} {self.right}"
 
 
 class Pow(BinOp):
     name = '^'
-
-    def __pow__(self, other) -> Node:
-        if isinstance(other, Real):
-            return Pow(*self.values, Value(float(other)))
-        elif isinstance(other, Node):
-            return Pow(*self.values, other)
-        else:
-            return NotImplemented
-
-    def __rpow__(self, other) -> Node:
-        if isinstance(other, Real):
-            return Pow(Value(float(other)), *self.values)
-        elif isinstance(other, Node):
-            return Pow(other, *self.values)
-        else:
-            return NotImplemented
-
-    def reduce(self) -> Node:
-        reduced_values = []
-        can_reduce_evaluable = True
-        for value in self.values[::-1]:
-            value = value.reduce()
-            evaluable = value.is_evaluable()
-
-            if not evaluable:
-                can_reduce_evaluable = False
-
-            if can_reduce_evaluable and evaluable and reduced_values:
-                reduced_values[-1] = Value((value ** reduced_values[-1]).evaluate())
-
-            else:
-                reduced_values.append(value)
-
-        if len(reduced_values) == 1 and can_reduce_evaluable:
-            return reduced_values[0]
-
-        return Pow(*reduced_values[::-1])
+    identity = Value(1.0)
 
     @staticmethod
-    def evaluator(*values: float) -> float:
-        result = 1.0
-        for v in values[::-1]:
-            result = v ** result
-        return result
-
+    def evaluator(left: float, right: float) -> float:
+        return left ** right
 
 @dataclass
 class MatchResult:

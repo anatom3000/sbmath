@@ -2,13 +2,15 @@
 from parser import parse, ParsingError
 
 
-def pattern_matching():
+def pattern_matching(print_back=False):
+    # FIXME: `(x-9)(x+9)` does not match `([A]+[B])([A]-[B])`
+
     while True:
         try:
-            expr = parse(input("E: "))
-            print(" =>", expr)
-            pat = parse(input("P: "))
-            print(" =>", pat)
+            expr = parse(input("Expression: "))
+            if print_back: print(" =>", expr)
+            pat = parse(input("Pattern: "))
+            if print_back: print(" =>", pat)
         except ParsingError:
             expr = pat = None
 
@@ -20,13 +22,13 @@ def pattern_matching():
         print(" =>", f"{m}")
 
 
-def contains():
+def contains(print_back=False):
     while True:
         try:
-            expr = parse(input("E: "))
-            print(" =>", expr)
-            container = parse(input("C: "))
-            print(" =>", container)
+            expr = parse(input("Expression: "))
+            if print_back: print(" =>", expr)
+            container = parse(input("Container: "))
+            if print_back: print(" =>", container)
         except ParsingError:
             expr = container = None
 
@@ -40,31 +42,31 @@ def contains():
             print(f" => {expr} is not in {container}")
 
 
-def reduce():
+def reduce(print_back=False):
     while True:
         try:
-            expr = parse(input("E: "))
+            expr = parse(input("Expression: "))
         except ParsingError:
             print(" => Something went wrong...")
             continue
 
         if expr is None:
             continue
-        print(" =>", expr)
+        if print_back: print(" =>", expr)
 
         r = expr.reduce()
         print(f"R: {r}")
 
 
-def find_and_replace():
+def find_and_replace(print_back=False):
     while True:
         try:
-            expr = parse(input("E: "))
-            print(" =>", expr)
-            oldp = parse(input("O: "))
-            print(" =>", oldp)
-            newp = parse(input("N: "))
-            print(" =>", newp)
+            expr = parse(input("Expression: "))
+            if print_back: print(" =>", expr)
+            oldp = parse(input("Current pattern: "))
+            if print_back: print(" =>", oldp)
+            newp = parse(input("New pattern: "))
+            if print_back: print(" =>", newp)
 
         except ParsingError:
             print(" => Something went wrong...")

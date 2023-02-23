@@ -260,43 +260,6 @@ class Wildcard(Node):
         self.constraints = constraints
 
 
-class BinOp(Node, ABC):
-    name: str
-
-    def matches(self, value: Node, state: MatchResult = None) -> Optional[MatchResult]:
-        if self.is_evaluable() and value.is_evaluable() and self.evaluate() == value.evaluate():
-            return state
-        else:
-            return None
-
-    # noinspection PyProtectedMember
-    def _replace_identifiers(self, match_result: MatchResult) -> Node:
-        return type(self)(*(x._replace_identifiers(match_result) for x in self.values))
-
-    def is_evaluable(self) -> bool:
-        return all(c.is_evaluable() for c in self.values)
-
-    def contains(self, pattern: Node) -> bool:
-        return pattern.matches(self) is not None or any(c.contains(pattern) for c in self.values)
-
-    def __init__(self, *values):
-        self.values = values
-
-    @staticmethod
-    @abstractmethod
-    def evaluator(*values: float) -> float:
-        pass
-
-    def evaluate(self) -> float:
-        if not self.is_evaluable():
-            raise ValueError("cannot evaluate expression")
-
-        return self.evaluator(*(v.evaluate() for v in self.values))
-
-    def __str__(self):
-        return '( ' + f' {self.name} '.join(map(lambda x: str(x), self.values)) + ' )'
-
-
 class AdvancedBinOp(Node, ABC):
     base_operation_symbol: str
     inverse_operation_symbol: str
@@ -519,27 +482,33 @@ class AdvancedBinOp(Node, ABC):
         if state is None:
             state = MatchResult()
 
-        if self.is_evaluable() and value.is_evaluable():
-            return self._match_evaluable(value, state)
-        elif not isinstance(value, type(self)):
+        reduced_self = self.reduce()
+        reduced_value = value.reduce()
+
+        if not isinstance(reduced_self, type(self)):
+            return reduced_self.matches(reduced_value, state)
+
+        if reduced_self.is_evaluable() and reduced_value.is_evaluable():
+            return reduced_self._match_evaluable(reduced_value, state)
+
+        if not isinstance(reduced_value, type(self)):
             return None
 
         no_wildcard_self = type(self)(
-            list(filter(lambda x: not isinstance(x, Wildcard) and self.identity.matches(x) is None, self.base_values)),
-            list(filter(lambda x: not isinstance(x, Wildcard) and self.identity.matches(x) is None,
-                        self.inverted_values))
+            list(filter(lambda x: not isinstance(x, Wildcard) and self.identity.matches(x) is None, reduced_self.base_values)),
+            list(filter(lambda x: not isinstance(x, Wildcard) and self.identity.matches(x) is None, reduced_self.inverted_values))
         )
 
         value: AdvancedBinOp  # I love Python's type system...
 
-        state, remaining_pattern, remaining_value = no_wildcard_self._match_no_wildcards(value, state)
+        state, remaining_pattern, remaining_value = no_wildcard_self._match_no_wildcards(reduced_value, state)
 
         if remaining_pattern.base_values or remaining_pattern.inverted_values:
             return None
 
         wildcard_self = type(self)(
-            list(filter(lambda x: isinstance(x, Wildcard), self.base_values)),
-            list(filter(lambda x: isinstance(x, Wildcard), self.inverted_values))
+            list(filter(lambda x: isinstance(x, Wildcard), reduced_self.base_values)),
+            list(filter(lambda x: isinstance(x, Wildcard), reduced_self.inverted_values))
         )
 
         result = wildcard_self._match_wildcards(remaining_value, state)  # type: ignore
@@ -746,6 +715,43 @@ class MulAndDiv(AdvancedBinOp):
             return MulAndDiv([other] + self.inverted_values, self.base_values)
         else:
             return NotImplemented
+
+
+class BinOp(Node, ABC):
+    name: str
+
+    def matches(self, value: Node, state: MatchResult = None) -> Optional[MatchResult]:
+        if self.is_evaluable() and value.is_evaluable() and self.evaluate() == value.evaluate():
+            return state
+        else:
+            return None
+
+    # noinspection PyProtectedMember
+    def _replace_identifiers(self, match_result: MatchResult) -> Node:
+        return type(self)(*(x._replace_identifiers(match_result) for x in self.values))
+
+    def is_evaluable(self) -> bool:
+        return all(c.is_evaluable() for c in self.values)
+
+    def contains(self, pattern: Node) -> bool:
+        return pattern.matches(self) is not None or any(c.contains(pattern) for c in self.values)
+
+    def __init__(self, *values):
+        self.values = values
+
+    @staticmethod
+    @abstractmethod
+    def evaluator(*values: float) -> float:
+        pass
+
+    def evaluate(self) -> float:
+        if not self.is_evaluable():
+            raise ValueError("cannot evaluate expression")
+
+        return self.evaluator(*(v.evaluate() for v in self.values))
+
+    def __str__(self):
+        return '( ' + f' {self.name} '.join(map(lambda x: str(x), self.values)) + ' )'
 
 
 class Pow(BinOp):

@@ -3,8 +3,6 @@ from parser import parse, ParsingError
 
 
 def pattern_matching(print_back=False):
-    # FIXME: `(x-9)(x+9)` does not match `([A]+[B])([A]-[B])`
-
     while True:
         try:
             expr = parse(input("Expression: "))
@@ -19,7 +17,7 @@ def pattern_matching(print_back=False):
             continue
 
         m = pat.matches(expr)
-        print(" =>", f"{m}")
+        print(" => ", f"{m}")
 
 
 def contains(print_back=False):
@@ -78,6 +76,23 @@ def find_and_replace(print_back=False):
 
         result = expr.replace(oldp, newp)
         print(f" => {result}")
+
+
+def fixed_non_associative_wildcard_matches():
+    expr = parse("(x-9)(x+9)")
+    pattern = parse("([A]+[B])([A]-[B])")
+
+    assert pattern.matches(expr) is not None
+
+
+def fixed_inverted_sign_advbinop_match():
+
+    expr = parse("(x-y)")
+    pattern = parse("([A]+[B])")
+
+    result = pattern.matches(expr)
+
+    print(f" => {result}")
 
 
 if __name__ == '__main__':

@@ -12,7 +12,7 @@ todo!();
 
 - [x] Expression parsing from string
 - [x] Evaluating expressions
-- [x] Match sums and differences together (ex: `(2+x-1)` matches `(-1-(-2)+x)`)
+- [ ] Somewhat stable pattern matching
 - [ ] Functions (take AST as argument for advanced transformations e.g. derivative)
 - [x] Advanced wildcards (match only variables, values, etc.)
 - [ ] Variables constraints (type, range...)

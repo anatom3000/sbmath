@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import copy
 import itertools
+import uuid
+
 from collections import defaultdict
 
 # typing modules
@@ -184,7 +186,7 @@ class Value(Leaf):
         return Value(-self.data)
 
     def __hash__(self):
-        return hash(str(id(self)))
+        return hash(self.uuid)  # can't use id(self) since id changes when copying
 
     def __str__(self):
         if self.data % 1 == 0:
@@ -200,6 +202,10 @@ class Value(Leaf):
 
     def evaluate(self) -> float:
         return self.data
+
+    def __init__(self, data):
+        super().__init__(data)
+        self.uuid = uuid.uuid1()
 
 
 class Variable(Leaf):
@@ -401,93 +407,195 @@ class AdvancedBinOp(Node, ABC):
 
         return new_state, remaining_pattern, remaining_value
 
-    def _remove_wildcard_match(self, value: Node, wildcard: Wildcard, match_table: utils.TwoWayMapping,
-                               state: MatchResult) \
-            -> Optional[utils.TwoWayMapping, MatchResult]:
+    def _remove_wildcard_match(self, value: Node, wildcard: Wildcard,
+                               base_match_table: utils.BiMultiDict, inverted_match_table: utils.BiMultiDict,
+                               state: MatchResult, inverted: bool) \
+            -> Optional[utils.BiMultiDict, utils.BiMultiDict, MatchResult]:
 
-        similars = [similar for similar in match_table.get_from_value(wildcard)
-                    if len(list(match_table.get_from_key(similar))) == 1]
+        base_match_table = copy.deepcopy(base_match_table)
+        inverted_match_table = copy.deepcopy(inverted_match_table)
 
-        if len(similars) == 0:
+        base_similars = [similar for similar in base_match_table.get_from_value(wildcard)
+                         if len(list(base_match_table.get_from_key(similar))) == 1]
+
+        inverted_similars = [similar for similar in inverted_match_table.get_from_value(wildcard)
+                             if len(list(inverted_match_table.get_from_key(similar))) == 1]
+
+        if len(base_similars) == 0 and len(inverted_similars) == 0:
             state = wildcard.matches(value, state)
             if state is None:
                 return None
 
-            match_table.remove_key(value)
+            if inverted:
+                inverted_match_table.remove_key(value)
+            else:
+                base_match_table.remove_key(value)
 
-        elif len(similars) == 1:
-            state = wildcard.matches(similars[0], state)
+            base_match_table.remove_value(wildcard)
+            inverted_match_table.remove_value(wildcard)
+
+            return base_match_table, inverted_match_table, state
+
+        if (not inverted) and len(base_similars) == 1 and len(inverted_similars) == 0:
+            state = wildcard.matches(base_similars[0], state)
             if state is None:
                 return None
 
-            match_table.remove_key(similars[0])
-        else:
-            state = wildcard.matches(type(self)(base_values=similars), state)
+            base_match_table.remove_key(base_similars[0])
+            base_match_table.remove_value(wildcard)
+
+            return base_match_table, inverted_match_table, state
+
+        if inverted and len(inverted_similars) == 1 and len(base_similars) == 0:
+            state = wildcard.matches(inverted_similars[0], state)
             if state is None:
                 return None
 
-            for s in similars:
-                match_table.remove_key(s)
+            inverted_match_table.remove_key(inverted_similars[0])
+            inverted_match_table.remove_value(wildcard)
 
-        # p = lambda a: ({k: a.get_from_key(k) for k in a.keys()}, {k: a.get_from_value(k) for k in a.values()})
-        match_table.remove_value(wildcard)
+            return base_match_table, inverted_match_table, state
 
-        return match_table, state
+        combined_values = type(self)(base_similars, inverted_similars)
 
-    def _clean_up_single_wildcards(self, match_table: utils.TwoWayMapping, state: MatchResult) \
-            -> Optional[(utils.TwoWayMapping, MatchResult)]:
+        if inverted:
+            combined_values = -combined_values
 
-        while any(len(match_table.get_from_key(k)) < 2 for k in match_table.keys()):
-            for value in list(match_table.keys()):
-                if value not in match_table.keys():
+        state = wildcard.matches(combined_values)
+        if state is None:
+            return None
+
+        for s in base_similars:
+            base_match_table.remove_key(s)
+
+        for s in inverted_similars:
+            inverted_match_table.remove_key(s)
+
+        return base_match_table, inverted_match_table, state
+
+    def _clean_up_single_wildcards(self, base_match_table: utils.BiMultiDict, inverted_match_table: utils.BiMultiDict,
+                                   state: MatchResult) \
+            -> Optional[(utils.BiMultiDict, utils.BiMultiDict, MatchResult)]:
+
+        base_match_table = copy.deepcopy(base_match_table)
+        inverted_match_table = copy.deepcopy(inverted_match_table)
+
+        while any(len(base_match_table.get_from_key(k)) < 2 for k in base_match_table.keys()):
+            for value in list(base_match_table.keys()):
+                if value not in base_match_table.keys():
                     continue
 
-                matches = list(match_table.get_from_key(value))
+                matches = list(base_match_table.get_from_key(value))
 
                 if len(matches) == 0:
                     return None
                 elif len(matches) == 1:
-                    r = self._remove_wildcard_match(value, matches[0], match_table, state)
+                    r = self._remove_wildcard_match(value, matches[0], base_match_table, inverted_match_table, state,
+                                                    inverted=False)
                     if r is None:
                         return None
-                    match_table, state = r
+                    base_match_table, inverted_match_table, state = r
 
-        return match_table, state
+        while any(len(inverted_match_table.get_from_key(k)) < 2 for k in inverted_match_table.keys()):
+            for value in list(inverted_match_table.keys()):
+                if value not in inverted_match_table.keys():
+                    continue
 
-    def _match_wildcards(self, value: AdvancedBinOp, state: MatchResult) -> Optional[MatchResult]:
+                matches = list(inverted_match_table.get_from_key(value))
 
-        match_table = utils.TwoWayMapping()
-        for value in value.base_values:
+                if len(matches) == 0:
+                    return None
+                elif len(matches) == 1:
+                    r = self._remove_wildcard_match(value, matches[0], base_match_table, inverted_match_table, state,
+                                                    inverted=True)
+                    if r is None:
+                        return None
+                    base_match_table, inverted_match_table, state = r
+
+        return base_match_table, inverted_match_table, state
+
+    def _build_match_tables(self, value: AdvancedBinOp, state: MatchResult) \
+            -> Optional[tuple[utils.BiMultiDict, utils.BiMultiDict]]:
+        base_match_table = utils.BiMultiDict()
+        for val in value.base_values:
             found_one = False
             for wildcard in self.base_values:
-                r = wildcard.matches(value, copy.deepcopy(state))
+                r = wildcard.matches(val, copy.deepcopy(state))
                 if r:
                     found_one = True
-                    match_table.add(value, wildcard)
+                    base_match_table.add(val, wildcard)
+
+            if not found_one:
+                for wildcard in self.inverted_values:
+                    invval = self._invert_value(val)
+                    r = wildcard.matches(invval, copy.deepcopy(state))
+                    if r:
+                        found_one = True
+                        base_match_table.add(invval, wildcard)
 
             if not found_one:
                 return None
 
-        result = self._clean_up_single_wildcards(match_table, state)
-        if result is None:
+        inverted_match_table = utils.BiMultiDict()
+        for val in value.inverted_values:
+            found_one = False
+            for wildcard in self.inverted_values:
+                r = wildcard.matches(val, copy.deepcopy(state))
+                if r:
+                    found_one = True
+                    inverted_match_table.add(val, wildcard)
+
+            if not found_one:
+                for wildcard in self.base_values:
+                    invval = self._invert_value(val)
+                    r = wildcard.matches(invval, copy.deepcopy(state))
+                    if r:
+                        found_one = True
+                        inverted_match_table.add(invval, wildcard)
+
+            if not found_one:
+                return None
+
+        return base_match_table, inverted_match_table
+
+    def _match_wildcards(self, value: AdvancedBinOp, state: MatchResult) -> Optional[MatchResult]:
+
+        r = self._build_match_tables(value, state)
+        if r is None:
             return None
 
-        match_table, state = result
+        base_match_table, inverted_match_table = r
 
-        for value in list(match_table.keys()):
-            if value not in list(match_table.keys()):
+        result = self._clean_up_single_wildcards(base_match_table, inverted_match_table, state)
+        if result is None:
+            return None
+        base_match_table, inverted_match_table, state = result
+
+        for value in list(base_match_table.keys()):
+            if value not in list(base_match_table.keys()):
                 continue
-            r = self._remove_wildcard_match(value, match_table.get_from_key(value)[0], match_table, state)
+            r = self._remove_wildcard_match(value, base_match_table.get_from_key(value)[0], base_match_table,
+                                            inverted_match_table, state, False)
             if r is None:
                 return None
-            match_table, state = r
+            base_match_table, inverted_match_table, state = r
 
-        if len(list(match_table.keys())) != 0:
+        for value in list(inverted_match_table.keys()):
+            if value not in list(inverted_match_table.keys()):
+                continue
+            r = self._remove_wildcard_match(value, inverted_match_table.get_from_key(value)[0], base_match_table,
+                                            inverted_match_table, state, True)
+            if r is None:
+                return None
+            base_match_table, inverted_match_table, state = r
+
+        if len(list(base_match_table.keys())) != 0 or len(list(inverted_match_table.keys())) != 0:
             return None
 
         return state
 
     def matches(self, value: Node, state: MatchResult = None) -> Optional[MatchResult]:
+
         if state is None:
             state = MatchResult()
 
@@ -504,8 +612,10 @@ class AdvancedBinOp(Node, ABC):
             return None
 
         no_wildcard_self = type(self)(
-            list(filter(lambda x: not isinstance(x, Wildcard) and self.identity.matches(x) is None, reduced_self.base_values)),
-            list(filter(lambda x: not isinstance(x, Wildcard) and self.identity.matches(x) is None, reduced_self.inverted_values))
+            list(filter(lambda x: not isinstance(x, Wildcard) and self.identity.matches(x) is None,
+                        reduced_self.base_values)),
+            list(filter(lambda x: not isinstance(x, Wildcard) and self.identity.matches(x) is None,
+                        reduced_self.inverted_values))
         )
 
         value: AdvancedBinOp  # I love Python's type system...
@@ -538,7 +648,7 @@ class AdvancedBinOp(Node, ABC):
             c.contains(pattern) for c in itertools.chain(self.base_values, self.inverted_values))
 
     def __str__(self):
-        text = '( '
+        text = '('
 
         text += f' {self.base_operation_symbol} '.join(map(str, self.base_values))
 
@@ -547,7 +657,7 @@ class AdvancedBinOp(Node, ABC):
 
         text += f' {self.inverse_operation_symbol} '.join(map(str, self.inverted_values))
 
-        return text + ' )'
+        return text + ')'
 
     def __hash__(self):
         return hash(str(self))
@@ -775,7 +885,7 @@ class BinOp(Node, ABC):
 
     # noinspection PyProtectedMember
     def _replace_identifiers(self, match_result: MatchResult) -> Node:
-        return type(self)(self.left._replace_identifiers(match_result), self.left._replace_identifiers(match_result))
+        return type(self)(self.left._replace_identifiers(match_result), self.right._replace_identifiers(match_result))
 
     def is_evaluable(self) -> bool:
         return self.left.is_evaluable() and self.right.is_evaluable()

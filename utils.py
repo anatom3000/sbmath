@@ -6,15 +6,15 @@ K = TypeVar("K", bound=Hashable)
 V = TypeVar("V", bound=Hashable)
 
 
-class TwoWayMapping:
+class BiMultiDict:
     """
     A data structure similar to a dict but you can retrieve the keys holding a specific value and vice versa.
     If we associate:
-        - A with Y (my_two_way.add('A', 'Y'))
-        - B with Z (my_two_way.add('B', 'Z'))
-        - C with X (my_two_way.add('C', 'X'))
-        - C with Y (my_two_way.add('C', 'Y'))
-    We can using the mapping know that:
+        - A with Y (my_bmd.add('A', 'Y'))
+        - B with Z (my_bmd.add('B', 'Z'))
+        - C with X (my_bmd.add('C', 'X'))
+        - C with Y (my_bmd.add('C', 'Y'))
+    We can, using the mapping, know that:
         - the key A is associated with Y
         - the key C is associated with both X and Y
         - the value Z is associated with B
@@ -23,16 +23,19 @@ class TwoWayMapping:
     The concepts of keys and values are symmetrical.
     All objects (keys and values) must be hashable to be stored.
     When using bracket syntax:
-        - `my_two_way[key]` gets values associated with `key`
-        - `my_two_way[key] = value` associates `key` with `value` (does not overwrite previous relationships with `key`)
+        - `my_bmd[key]` gets values associated with `key`
+        - `my_bmd[key] = value` associates `key` with `value` (does not overwrite previous relationships with `key`)
         - `del my_two_way[key]` will remove all relationships with `key`
     """
 
     def __str__(self):
         k2v = {k: self.get_from_key(k) for k in self.keys()}
-        v2k = {v: self.get_from_key(v) for v in self.values()}
+        v2k = {v: self.get_from_value(v) for v in self.values()}
 
         return f"{k2v} <=> {v2k}"
+
+    def __repr__(self):
+        return str(self)
 
     def __init__(self, source: dict[K, V] = None):
         self._data: dict[K, V] = {}
@@ -132,7 +135,7 @@ class TwoWayMapping:
 
 
 if __name__ == "__main__":
-    a = TwoWayMapping()
+    a = BiMultiDict()
     a["a"] = "y"
     a["b"] = "z"
     a["c"] = "x"

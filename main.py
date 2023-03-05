@@ -40,6 +40,23 @@ def contains(print_back=False):
             print(f" => {expr} is not in {container}")
 
 
+def eq(print_back=False):
+    while True:
+        try:
+            expr1 = parse(input("Expression: "))
+            if print_back: print(" =>", expr)
+            expr2 = parse(input("Expression: "))
+            if print_back: print(" =>", expr)
+        except ParsingError:
+            expr1 = expr2 = None
+
+        if expr1 is None or expr2 is None:
+            print(" => Something went wrong...")
+            continue
+
+        print(" =>", expr1 == expr2)
+
+
 def reduce(print_back=False):
     while True:
         try:
@@ -55,6 +72,57 @@ def reduce(print_back=False):
 
         r = expr.reduce()
         print(f"R: {r}")
+
+
+def reduce_no_eval(print_back=False):
+    while True:
+        try:
+            expr = parse(input("Expression: "))
+        except ParsingError:
+            print(" => Something went wrong...")
+            continue
+
+        if expr is None:
+            continue
+
+        if print_back: print(" =>", expr)
+
+        r = expr.reduce_no_eval()
+        print(f"R: {r}")
+
+
+def evaluate(print_back=False):
+    while True:
+        try:
+            expr = parse(input("Expression: "))
+        except ParsingError:
+            print(" => Something went wrong...")
+            continue
+
+        if expr is None:
+            continue
+
+        if print_back: print(" =>", expr)
+
+        r = expr.evaluate()
+        print(f"E: {r}")
+
+
+def approx(print_back=False):
+    while True:
+        try:
+            expr = parse(input("Expression: "))
+        except ParsingError:
+            print(" => Something went wrong...")
+            continue
+
+        if expr is None:
+            continue
+
+        if print_back: print(" =>", expr)
+
+        r = expr.approximate()
+        print(f"A: {r}")
 
 
 def find_and_replace(print_back=False):
@@ -78,22 +146,5 @@ def find_and_replace(print_back=False):
         print(f" => {result}")
 
 
-def fixed_non_associative_wildcard_matches():
-    expr = parse("(x-9)(x+9)")
-    pattern = parse("([A]+[B])([A]-[B])")
-
-    assert pattern.matches(expr) is not None
-
-
-def fixed_inverted_sign_advbinop_match():
-
-    expr = parse("(x-y)")
-    pattern = parse("([A]+[B])")
-
-    result = pattern.matches(expr)
-
-    print(f" => {result}")
-
-
 if __name__ == '__main__':
-    pattern_matching()
+    match(print_back=True)

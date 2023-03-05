@@ -2,7 +2,7 @@
 from parser import parse, ParsingError
 
 
-def pattern_matching(print_back=False):
+def matches(print_back=False):
     while True:
         try:
             expr = parse(input("Expression: "))
@@ -44,9 +44,9 @@ def eq(print_back=False):
     while True:
         try:
             expr1 = parse(input("Expression: "))
-            if print_back: print(" =>", expr)
+            if print_back: print(" =>", expr1)
             expr2 = parse(input("Expression: "))
-            if print_back: print(" =>", expr)
+            if print_back: print(" =>", expr2)
         except ParsingError:
             expr1 = expr2 = None
 
@@ -147,4 +147,4 @@ def find_and_replace(print_back=False):
 
 
 if __name__ == '__main__':
-    match(print_back=True)
+    matches(print_back=True)

@@ -372,18 +372,12 @@ class AdvancedBinOp(Node, ABC):
             filter(lambda x: x.is_evaluable(), self.inverted_values)
         )
 
-        print(f"{eval_part = }")
-
         non_eval_part = type(self)(
             filter(lambda x: not x.is_evaluable(), self.base_values),
             filter(lambda x: not x.is_evaluable(), self.inverted_values)
         )
 
-        print(f"{non_eval_part = }")
-
         eval_result = eval_part.evaluate()
-
-        print(f"{eval_result = }")
 
         if isinstance(eval_result, type(self)):
             non_eval_part.base_values += eval_result.base_values
@@ -1032,6 +1026,7 @@ class Pow(BinOp):
     @staticmethod
     def approximator(left: float, right: float) -> float:
         return left ** right
+
 
 @dataclass
 class MatchResult:

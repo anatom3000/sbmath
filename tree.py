@@ -238,6 +238,9 @@ class Wildcard(Node):
 
         return self.name == other.name and self.constraints == other.constraints
 
+    def __hash__(self):
+        return hash(str(self))
+
     def contains(self, pattern: Node) -> bool:
         return pattern.matches(self) is not None
 

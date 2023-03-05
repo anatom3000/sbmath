@@ -122,7 +122,7 @@ class Node(ABC):
 
     @abstractmethod
     def evaluate(self) -> Node:
-        pass  # TODO: make Node.evaluable return a Node (for more complex values that can only be approximated like √2)
+        pass
 
     @abstractmethod
     def approximate(self) -> float:
@@ -304,6 +304,7 @@ class AdvancedBinOp(Node, ABC):
     inverse_operation_symbol: str
 
     identity: Node
+    absorbing_element: Optional[Node] = None
 
     @staticmethod
     @abstractmethod
@@ -340,6 +341,9 @@ class AdvancedBinOp(Node, ABC):
 
             if key == self.identity:
                 continue
+
+            if self.absorbing_element == key:
+                return self.absorbing_element
 
             if self._should_invert_value(key):
                 key = self._invert_value(key)
@@ -844,6 +848,7 @@ class MulAndDiv(AdvancedBinOp):
     inverse_operation_symbol = '/'
 
     identity = Value(1.0)
+    absorbing_element = Value(0.0)
 
     @staticmethod
     def _repeat_value(value: Node, times: int) -> Node:

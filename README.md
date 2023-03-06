@@ -1,11 +1,25 @@
 # sbmath
 
-Symbolic math parser/matcher/transformer/manipulator.
+Symbolic math library. 
+
+For now this can only do basic pattern matching on expression, but in the long run it should become a ~~scuffed~~ simpler version of `sympy`.
+
+The pattern matching is still very buggy and wip, though it should be a bit more stable once the low-level API design is done. 
 
 ### Quick start
 
-```rust
-todo!();
+Run `main.py` to have an all-in-one REPL: 
+
+```shell
+python main.py
+```
+
+Alternatively you can modify `main.py` to run various specialized repl and/or tests.
+
+### Installation
+
+```shell
+$ pip install -r requirements.txt
 ```
 
 ### Todo
@@ -26,3 +40,8 @@ todo!();
 |    `Value` |      Yes      |      Yes       |       Yes       |      Yes       |
 | `Variable` |      Yes      |      Yes       |       Yes       |      Yes       |
 | `Wildcard` |      Yes      |      Yes       |       Yes       |      Yes       |
+
+
+### License
+
+This project is under the GPLv3 license.

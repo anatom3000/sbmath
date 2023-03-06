@@ -126,7 +126,7 @@ def repl():
 
         elif op == 'replace':
             try:
-                pat_old = parse(input(f"{LIGHT_GRAY}Old attern: {END}"))
+                pat_old = parse(input(f"{LIGHT_GRAY}Old pattern: {END}"))
             except EOFError:
                 break
             if pat_old is None:

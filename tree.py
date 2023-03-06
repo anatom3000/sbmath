@@ -325,7 +325,6 @@ class AdvancedBinOp(Node, ABC):
         pass
 
     def reduce_no_eval(self) -> Node:
-        # TODO: handle absorbing element (zero for multiplication)
 
         value_occurences = defaultdict(int)
 

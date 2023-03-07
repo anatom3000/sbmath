@@ -1,6 +1,20 @@
+import sys
 from collections import defaultdict
 from collections.abc import Hashable, Iterable
 from typing import TypeVar
+
+DEBUG = True
+DEBUG_FLAGS = (
+    # "match",
+    "match_adv_wc",
+    # "reduce",
+    # "misc"
+)
+
+
+def debug(data, /, flag=''):
+    if DEBUG and flag in DEBUG_FLAGS:
+        print(data, file=sys.stderr)
 
 K = TypeVar("K", bound=Hashable)
 V = TypeVar("V", bound=Hashable)
@@ -70,6 +84,19 @@ class BiMultiDict:
 
         return [self._data[h] for h in self._values_to_keys[h]]
 
+    def try_remove_key(self, key) -> bool:
+        h = hash(key)
+        if h not in self._keys_to_values.keys():
+            return False
+
+        del self._data[h]
+        del self._keys_to_values[h]
+        for v in self._values_to_keys.keys():
+            if h in self._values_to_keys[v]:
+                self._values_to_keys[v].remove(h)
+
+        return True
+
     def remove_key(self, key) -> None:
         h = hash(key)
         if h not in self._keys_to_values.keys():
@@ -80,6 +107,19 @@ class BiMultiDict:
         for v in self._values_to_keys.keys():
             if h in self._values_to_keys[v]:
                 self._values_to_keys[v].remove(h)
+
+    def try_remove_value(self, value) -> bool:
+        h = hash(value)
+        if h not in self._values_to_keys.keys():
+            return False
+
+        del self._data[h]
+        del self._values_to_keys[h]
+        for v in self._keys_to_values.keys():
+            if h in self._keys_to_values[v]:
+                self._keys_to_values[v].remove(h)
+
+        return True
 
     def remove_value(self, value) -> None:
         h = hash(value)

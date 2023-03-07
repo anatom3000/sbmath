@@ -27,7 +27,7 @@ def _completer(text, state):
     line = readline.get_line_buffer()
 
     # determine if we need to auto-insert a closing bracket
-    if text in BRACKETS.keys() and not re.search(r'[\)\]]', line, re.MULTILINE | re.DOTALL):
+    if text in BRACKETS.keys() and not re.search(r'[)\]]', line, re.MULTILINE | re.DOTALL):
         return text + BRACKETS[text]
 
     # determine if we need to restrict completions to a closing bracket
@@ -62,9 +62,13 @@ def repl():
         except EOFError:
             break
 
+        if not op:
+            continue
+
         if op not in operations:
             print(f"{RED}Operation not found!{END}", end=' ')
             print(f"{CYAN}Available operations:{END}{LIGHT_GREEN}", ', '.join(map(repr, operations[:-1])), 'and',
+
                   repr(operations[-1]), END)
 
             continue

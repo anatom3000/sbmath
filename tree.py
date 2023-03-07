@@ -16,6 +16,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 
 import utils
+from utils import debug
 
 
 class Node(ABC):
@@ -393,6 +394,7 @@ class AdvancedBinOp(Node, ABC):
 
         return non_eval_part.reduce_no_eval()
 
+    # --- MATCH INTERNAL FUNCTIONS ---
     def _match_evaluable(self, value: Node, state: MatchResult = None) -> Optional[MatchResult]:
         return state if self.evaluate() == value.evaluate() else None
 
@@ -458,6 +460,14 @@ class AdvancedBinOp(Node, ABC):
                                state: MatchResult, inverted: bool) \
             -> Optional[utils.BiMultiDict, utils.BiMultiDict, MatchResult]:
 
+        debug(f"Start remove wildcard match:", flag='match_adv_wc')
+        debug(f"    {value = }", flag='match_adv_wc')
+        debug(f"    {wildcard = }", flag='match_adv_wc')
+        debug(f"    {base_match_table = }", flag='match_adv_wc')
+        debug(f"    {inverted_match_table = }", flag='match_adv_wc')
+        debug(f"    {state = }", flag='match_adv_wc')
+        debug(f"    {inverted = }", flag='match_adv_wc')
+
         base_match_table = copy.deepcopy(base_match_table)
         inverted_match_table = copy.deepcopy(inverted_match_table)
 
@@ -466,6 +476,10 @@ class AdvancedBinOp(Node, ABC):
 
         inverted_similars = [similar for similar in inverted_match_table.get_from_value(wildcard)
                              if len(list(inverted_match_table.get_from_key(similar))) == 1]
+
+        debug(f"    Similars:", flag='match_adv_wc')
+        debug(f"        {base_similars = }", flag='match_adv_wc')
+        debug(f"        {inverted_similars = }", flag='match_adv_wc')
 
         if len(base_similars) == 0 and len(inverted_similars) == 0:
             state = wildcard.matches(value, state)
@@ -477,8 +491,8 @@ class AdvancedBinOp(Node, ABC):
             else:
                 base_match_table.remove_key(value)
 
-            base_match_table.remove_value(wildcard)
-            inverted_match_table.remove_value(wildcard)
+            base_match_table.try_remove_value(wildcard)
+            inverted_match_table.try_remove_value(wildcard)
 
             return base_match_table, inverted_match_table, state
 
@@ -608,30 +622,59 @@ class AdvancedBinOp(Node, ABC):
 
         r = self._build_match_tables(value, state)
         if r is None:
+            debug(f"No match found, aborting...", flag='match_adv_wc')
             return None
 
         base_match_table, inverted_match_table = r
 
+        debug(f"{base_match_table = }", flag='match_adv_wc')
+        debug(f"{inverted_match_table = }", flag='match_adv_wc')
+
         result = self._clean_up_single_wildcards(base_match_table, inverted_match_table, state)
         if result is None:
+            debug(f"Something messed up while cleaning up single wildcards, aborting...", flag='match_adv_wc')
             return None
+
         base_match_table, inverted_match_table, state = result
 
+        debug(f"Single wc clean up successful", flag='match_adv_wc')
+        debug(f"{base_match_table = }", flag='match_adv_wc')
+        debug(f"{inverted_match_table = }", flag='match_adv_wc')
+        debug(f"{state = }", flag='match_adv_wc')
+
+        debug(f"Starting to match base values", flag='match_adv_wc')
         for value in list(base_match_table.keys()):
             if value not in list(base_match_table.keys()):
+                debug(f"{value} was not found in {base_match_table = }, skipping...", flag='match_adv_wc')
                 continue
+
+            debug(f"attempting removal of wildcard match {value=} ", flag='match_adv_wc')
+            debug(f"    {base_match_table.get_from_key(value)[0] = }", flag='match_adv_wc')
+            debug(f"    {base_match_table = }", flag='match_adv_wc')
+            debug(f"    {inverted_match_table = }", flag='match_adv_wc')
+            debug(f"    {state = }", flag='match_adv_wc')
             r = self._remove_wildcard_match(value, base_match_table.get_from_key(value)[0], base_match_table,
                                             inverted_match_table, state, False)
+
             if r is None:
+                debug(f"Something went wrong while removing wildcard match, aborting...", flag='match_adv_wc')
                 return None
             base_match_table, inverted_match_table, state = r
 
+        debug(f"Starting to match inverted values", flag='match_adv_wc')
         for value in list(inverted_match_table.keys()):
             if value not in list(inverted_match_table.keys()):
+                debug(f"{value} was not found in {inverted_match_table = }, skipping...", flag='match_adv_wc')
                 continue
+            debug(f"attempting removal of wildcard match {value=} ", flag='match_adv_wc')
+            debug(f"    {inverted_match_table.get_from_key(value)[0] = }", flag='match_adv_wc')
+            debug(f"    {base_match_table = }", flag='match_adv_wc')
+            debug(f"    {inverted_match_table = }", flag='match_adv_wc')
+            debug(f"    {state = }", flag='match_adv_wc')
             r = self._remove_wildcard_match(value, inverted_match_table.get_from_key(value)[0], base_match_table,
                                             inverted_match_table, state, True)
             if r is None:
+                debug(f"Something went wrong while removing wildcard match, aborting...", flag='match_adv_wc')
                 return None
             base_match_table, inverted_match_table, state = r
 
@@ -639,8 +682,11 @@ class AdvancedBinOp(Node, ABC):
             return None
 
         return state
+    # --- END MATCH INTERNAL FUNCTIONS ---
 
     def matches(self, value: Node, state: MatchResult = None) -> Optional[MatchResult]:
+
+        debug(f"Matching pattern {self} with value {value}", flag='match')
 
         if state is None:
             state = MatchResult()
@@ -648,13 +694,19 @@ class AdvancedBinOp(Node, ABC):
         reduced_self = self.reduce()
         reduced_value = value.reduce()
 
+        debug(f"{reduced_self = }", flag='match')
+        debug(f"{reduced_value = }", flag='match')
+
         if not isinstance(reduced_self, type(self)):
+            debug(f"reducing changed type of self, redirecting...", flag='match')
             return reduced_self.matches(reduced_value, state)
 
         if reduced_self.is_evaluable() and reduced_value.is_evaluable():
+            debug(f"both self and value are evaluable, matching direcly...", flag='match')
             return reduced_self._match_evaluable(reduced_value, state)
 
         if not isinstance(reduced_value, type(self)):
+            debug(f"reducing changed type of value, aborting...", flag='match')
             return None
 
         no_wildcard_self = type(self)(
@@ -664,17 +716,27 @@ class AdvancedBinOp(Node, ABC):
                         reduced_self.inverted_values))
         )
 
+        debug(f"{no_wildcard_self = }", flag='match')
+
         value: AdvancedBinOp  # I love Python's type system...
 
         state, remaining_pattern, remaining_value = no_wildcard_self._match_no_wildcards(reduced_value, state)
 
+        debug(f"Finished matching everything except wilcards:", flag='match')
+        debug(f"{state = }", flag='match')
+        debug(f"{remaining_pattern = }", flag='match')
+        debug(f"{remaining_value = }", flag='match')
+
         if remaining_pattern.base_values or remaining_pattern.inverted_values:
+            debug("Some non-wildcard did not get a corresponding value, aborting...", flag='match')
             return None
 
         wildcard_self = type(self)(
             list(filter(lambda x: isinstance(x, Wildcard), reduced_self.base_values)),
             list(filter(lambda x: isinstance(x, Wildcard), reduced_self.inverted_values))
         )
+
+        debug(f"{wildcard_self = }", flag='match')
 
         result = wildcard_self._match_wildcards(remaining_value, state)  # type: ignore
 

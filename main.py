@@ -1,6 +1,8 @@
 # noinspection PyCompatibility
 from parser import parse, ParsingError
 
+from repl import repl
+
 
 def matches(print_back=False):
     while True:
@@ -146,11 +148,6 @@ def replace(print_back=False):
         print(f" => {result}")
 
 
-def repl():
-    from repl import repl as shell
-
-    shell()
-
 # FIXME:
 #  % match
 #   Pattern: [a]+[b]
@@ -171,6 +168,13 @@ def repl():
 #     File "/home/anatom/Bureau/dev/sbmath/utils.py", line 87, in remove_value
 #       raise KeyError(f"unknown value {value}")
 #   KeyError: 'unknown value [a]'
+
+
+def debug_broken_match():
+    e = parse("x+y")
+    p = parse("[a]+[b]")
+
+    print(p.matches(e))
 
 
 if __name__ == '__main__':

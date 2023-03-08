@@ -682,46 +682,28 @@ class AdvancedBinOp(Node, ABC):
             return None
 
         return state
-    # --- END MATCH INTERNAL FUNCTIONS ---
 
-    def matches(self, value: Node, state: MatchResult = None) -> Optional[MatchResult]:
-
-        debug(f"Matching pattern {self} with value {value}", flag='match')
-        inc_indent()
-
-        if state is None:
-            state = MatchResult()
-
-        reduced_self = self.reduce()
-        reduced_value = value.reduce()
-
-        debug(f"{reduced_self = }", flag='match')
-        debug(f"{reduced_value = }", flag='match')
-
-        if not isinstance(reduced_self, type(self)):
-            debug(f"reducing changed type of self, redirecting...", flag='match')
-            return reduced_self.matches(reduced_value, state)
-
-        if reduced_self.is_evaluable() and reduced_value.is_evaluable():
+    def _match_no_reduce(self, value: Node, state: MatchResult):
+        if self.is_evaluable() and value.is_evaluable():
             debug(f"both self and value are evaluable, matching direcly...", flag='match')
-            return reduced_self._match_evaluable(reduced_value, state)
+            return self._match_evaluable(value, state)
 
-        if not isinstance(reduced_value, type(self)):
-            debug(f"reducing changed type of value, aborting...", flag='match')
+        if not isinstance(self, type(self)):
+            debug(f"type of value is different than self, aborting...", flag='match')
             return None
 
         no_wildcard_self = type(self)(
             list(filter(lambda x: not isinstance(x, Wildcard) and self.identity.matches(x) is None,
-                        reduced_self.base_values)),
+                        self.base_values)),
             list(filter(lambda x: not isinstance(x, Wildcard) and self.identity.matches(x) is None,
-                        reduced_self.inverted_values))
+                        self.inverted_values))
         )
 
         debug(f"{no_wildcard_self = }", flag='match')
 
         value: AdvancedBinOp  # I love Python's type system...
 
-        state, remaining_pattern, remaining_value = no_wildcard_self._match_no_wildcards(reduced_value, state)
+        state, remaining_pattern, remaining_value = no_wildcard_self._match_no_wildcards(value, state)
 
         debug(f"Finished matching everything except wilcards:", flag='match')
         inc_indent()
@@ -735,8 +717,8 @@ class AdvancedBinOp(Node, ABC):
             return None
 
         wildcard_self = type(self)(
-            list(filter(lambda x: isinstance(x, Wildcard), reduced_self.base_values)),
-            list(filter(lambda x: isinstance(x, Wildcard), reduced_self.inverted_values))
+            list(filter(lambda x: isinstance(x, Wildcard), self.base_values)),
+            list(filter(lambda x: isinstance(x, Wildcard), self.inverted_values))
         )
 
         debug(f"{wildcard_self = }", flag='match')
@@ -745,9 +727,41 @@ class AdvancedBinOp(Node, ABC):
 
         debug(f"Finishing match, returning {result}", flag='match')
 
-        dec_indent()
-
         return result
+
+    # --- END MATCH INTERNAL FUNCTIONS ---
+
+    def matches(self, value: Node, state: MatchResult = None) -> Optional[MatchResult]:
+
+        debug(f"Matching pattern {self} with value {value}", flag='match')
+        inc_indent()
+
+        if state is None:
+            state = MatchResult()
+
+        no_reduce_state = self._match_no_reduce(value, copy.deepcopy(state))
+
+        if no_reduce_state is not None:
+            dec_indent()
+            return no_reduce_state
+
+        debug(f"Matching without reducing failed, reducing...", flag='match')
+
+        reduced_self = self.reduce()
+        reduced_value = value.reduce()
+
+        debug(f"{reduced_self = }", flag='match')
+        debug(f"{reduced_value = }", flag='match')
+
+        if not isinstance(reduced_self, AdvancedBinOp):
+            debug(f"reduced self is no longer an advanced binary operator, redirecting...", flag='match')
+            m = reduced_self.matches(reduced_value, state)
+            dec_indent()
+            return m
+
+        m = reduced_self._match_no_reduce(reduced_value, state)
+        dec_indent()
+        return m
 
     def _replace_identifiers(self, match_result: MatchResult) -> Node:
         return type(self)(

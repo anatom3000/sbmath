@@ -148,34 +148,12 @@ def replace(print_back=False):
         print(f" => {result}")
 
 
-# FIXME:
-#  % match
-#   Pattern: [a]+[b]
-#   Expr: y+x
-#   Traceback (most recent call last):
-#     File "/home/anatom/Bureau/dev/sbmath/main.py", line 156, in <module>
-#       repl()
-#     File "/home/anatom/Bureau/dev/sbmath/main.py", line 152, in repl
-#       shell()
-#     File "/home/anatom/Bureau/dev/sbmath/repl.py", line 125, in repl
-#       result = pat.matches(expr)
-#     File "/home/anatom/Bureau/dev/sbmath/tree.py", line 679, in matches
-#       result = wildcard_self._match_wildcards(remaining_value, state)  # type: ignore
-#     File "/home/anatom/Bureau/dev/sbmath/tree.py", line 623, in _match_wildcards
-#       r = self._remove_wildcard_match(value, base_match_table.get_from_key(value)[0], base_match_table,
-#     File "/home/anatom/Bureau/dev/sbmath/tree.py", line 481, in _remove_wildcard_match
-#       inverted_match_table.remove_value(wildcard)
-#     File "/home/anatom/Bureau/dev/sbmath/utils.py", line 87, in remove_value
-#       raise KeyError(f"unknown value {value}")
-#   KeyError: 'unknown value [a]'
-
-
-def debug_broken_match():
-    e = parse("x+y")
-    p = parse("[a]+[b]")
+def fix_commutative_wildcard_match():
+    e = parse("(x-1)(x+1)")
+    p = parse("([a]+[b])([a]-[b])")
 
     print(p.matches(e))
-
+    # print(e.matches(p))
 
 if __name__ == '__main__':
     repl()

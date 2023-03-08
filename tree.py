@@ -16,7 +16,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 
 import utils
-from utils import debug
+from utils import debug, inc_indent, dec_indent
 
 
 class Node(ABC):
@@ -687,6 +687,7 @@ class AdvancedBinOp(Node, ABC):
     def matches(self, value: Node, state: MatchResult = None) -> Optional[MatchResult]:
 
         debug(f"Matching pattern {self} with value {value}", flag='match')
+        inc_indent()
 
         if state is None:
             state = MatchResult()
@@ -723,9 +724,11 @@ class AdvancedBinOp(Node, ABC):
         state, remaining_pattern, remaining_value = no_wildcard_self._match_no_wildcards(reduced_value, state)
 
         debug(f"Finished matching everything except wilcards:", flag='match')
+        inc_indent()
         debug(f"{state = }", flag='match')
         debug(f"{remaining_pattern = }", flag='match')
         debug(f"{remaining_value = }", flag='match')
+        dec_indent()
 
         if remaining_pattern.base_values or remaining_pattern.inverted_values:
             debug("Some non-wildcard did not get a corresponding value, aborting...", flag='match')
@@ -739,6 +742,10 @@ class AdvancedBinOp(Node, ABC):
         debug(f"{wildcard_self = }", flag='match')
 
         result = wildcard_self._match_wildcards(remaining_value, state)  # type: ignore
+
+        debug(f"Finishing match, returning {result}", flag='match')
+
+        dec_indent()
 
         return result
 
@@ -947,7 +954,7 @@ class MulAndDiv(AdvancedBinOp):
             return cls(inverted_values=values)
 
     def evaluate(self) -> Node:
-        value = Value(0.0)
+        value = Value(1.0)
         for c in self.base_values:
             value *= c.evaluate()
 

@@ -5,16 +5,28 @@ from typing import TypeVar
 
 DEBUG = True
 DEBUG_FLAGS = (
-    # "match",
-    "match_adv_wc",
+    "match",
+    # "match_adv_wc",
     # "reduce",
     # "misc"
 )
+DEBUG_INDENT = 0
+
+
+def inc_indent():
+    global DEBUG_INDENT
+    DEBUG_INDENT += 1
+
+
+def dec_indent():
+    global DEBUG_INDENT
+    DEBUG_INDENT -= 1
 
 
 def debug(data, /, flag=''):
     if DEBUG and flag in DEBUG_FLAGS:
-        print(data, file=sys.stderr)
+        print("| " * DEBUG_INDENT, data, file=sys.stderr, sep='')
+
 
 K = TypeVar("K", bound=Hashable)
 V = TypeVar("V", bound=Hashable)

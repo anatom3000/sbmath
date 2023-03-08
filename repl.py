@@ -2,6 +2,7 @@ import atexit
 import re
 import readline
 
+import utils
 # noinspection PyCompatibility
 from parser import parse
 
@@ -12,7 +13,7 @@ LIGHT_GRAY = "\033[0;37m"
 CYAN = "\033[0;36m"
 END = "\033[0m"
 
-operations = ['eq', 'approx', 'eval', 'reduce', 'match', 'replace', 'contains']
+operations = ['eq', 'approx', 'eval', 'reduce', 'reduce_no_eval', 'match', 'replace', 'contains', 'debug']
 
 start_text = f"""{CYAN}Interactive shell (alpha){END}
 {CYAN}Available operations:{END}{LIGHT_GREEN} {', '.join(map(repr, operations))}{END}"""
@@ -113,6 +114,15 @@ def repl():
                 continue
             result = expr.reduce()
 
+        elif op == 'reduce_no_eval':
+            try:
+                expr = parse(input(f"{LIGHT_GRAY}Expr: {END}"))
+            except EOFError:
+                break
+            if expr is None:
+                continue
+            result = expr.reduce_no_eval()
+
         elif op == 'match':
             try:
                 pat = parse(input(f"{LIGHT_GRAY}Pattern: {END}"))
@@ -164,6 +174,13 @@ def repl():
                 continue
             result = expr.contains(pat)
 
+        elif op == 'debug':
+            utils.DEBUG = not utils.DEBUG
+
+            if utils.DEBUG:
+                result = "Debugging enabled!"
+            else:
+                result = "Debugging disabled!"
         else:
             raise RuntimeError("operation not properly handled")
 

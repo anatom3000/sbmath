@@ -11,7 +11,7 @@ The pattern matching is still very buggy and wip, though it should be a bit more
 Run `main.py` to have an all-in-one REPL: 
 
 ```shell
-python main.py
+$ python main.py
 ```
 
 Alternatively you can modify `main.py` to run various specialized repl and/or tests.

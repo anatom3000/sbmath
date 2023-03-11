@@ -739,7 +739,7 @@ class AdvancedBinOp(Node, ABC):
             debug(f"both self and value are evaluable, matching direcly...", flag='match')
             return self._match_evaluable(value, state)
 
-        if not isinstance(self, type(self)):
+        if not isinstance(value, type(self)):
             debug(f"type of value is different than self, aborting...", flag='match')
             return None
 

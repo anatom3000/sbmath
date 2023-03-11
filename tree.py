@@ -460,13 +460,15 @@ class AdvancedBinOp(Node, ABC):
                                state: MatchResult, inverted: bool) \
             -> Optional[utils.BiMultiDict, utils.BiMultiDict, MatchResult]:
 
-        debug(f"Start remove wildcard match:", flag='match_adv_wc')
-        debug(f"    {value = }", flag='match_adv_wc')
-        debug(f"    {wildcard = }", flag='match_adv_wc')
-        debug(f"    {base_match_table = }", flag='match_adv_wc')
-        debug(f"    {inverted_match_table = }", flag='match_adv_wc')
-        debug(f"    {state = }", flag='match_adv_wc')
-        debug(f"    {inverted = }", flag='match_adv_wc')
+        debug(f"=> Start remove wildcard match:", flag='match_adv_wc')
+        inc_indent()
+        debug(f"{value = }", flag='match_adv_wc')
+        debug(f"{wildcard = }", flag='match_adv_wc')
+        debug(f"{base_match_table = }", flag='match_adv_wc')
+        # debug(f"{inverted_match_table = }", flag='match_adv_wc')
+        debug(f"{state = }", flag='match_adv_wc')
+        # debug(f"{inverted = }", flag='match_adv_wc')
+        dec_indent()
 
         base_match_table = copy.deepcopy(base_match_table)
         inverted_match_table = copy.deepcopy(inverted_match_table)
@@ -477,53 +479,90 @@ class AdvancedBinOp(Node, ABC):
         inverted_similars = [similar for similar in inverted_match_table.get_from_value(wildcard)
                              if len(list(inverted_match_table.get_from_key(similar))) == 1]
 
-        debug(f"    Similars:", flag='match_adv_wc')
-        debug(f"        {base_similars = }", flag='match_adv_wc')
-        debug(f"        {inverted_similars = }", flag='match_adv_wc')
+        # debug(f"Similars:", flag='match_adv_wc')
+        # inc_indent()
+        # debug(f"{base_similars = }", flag='match_adv_wc')
+        # debug(f"{inverted_similars = }", flag='match_adv_wc')
+        #
+        # dec_indent()
+        # debug(f"After copy:", flag='match_adv_wc')
+        # inc_indent()
+        #
+        # debug(f"{base_match_table = }", flag='match_adv_wc')
+        # debug(f"{inverted_match_table = }", flag='match_adv_wc')
+        #
+        # dec_indent()
 
         if len(base_similars) == 0 and len(inverted_similars) == 0:
+            debug(f"[A]", flag='match_adv_wc')
+            debug(f"0) {state = }", flag='match_adv_wc')
             state = wildcard.matches(value, state)
             if state is None:
                 return None
+
+            debug(f"1) {state = }", flag='match_adv_wc')
 
             if inverted:
                 inverted_match_table.remove_key(value)
             else:
                 base_match_table.remove_key(value)
 
+            debug(f"2) {state = }", flag='match_adv_wc')
+
             base_match_table.try_remove_value(wildcard)
             inverted_match_table.try_remove_value(wildcard)
+
+            debug(f"3) {state = }", flag='match_adv_wc')
 
             return base_match_table, inverted_match_table, state
 
         if (not inverted) and len(base_similars) == 1 and len(inverted_similars) == 0:
+            debug(f"[B]", flag='match_adv_wc')
+
+            debug(f"0) {state = }", flag='match_adv_wc')
             state = wildcard.matches(base_similars[0], state)
             if state is None:
                 return None
 
+            debug(f"1) {state = }", flag='match_adv_wc')
+
             base_match_table.remove_key(base_similars[0])
             base_match_table.remove_value(wildcard)
+
+            debug(f"2) {state = }", flag='match_adv_wc')
 
             return base_match_table, inverted_match_table, state
 
         if inverted and len(inverted_similars) == 1 and len(base_similars) == 0:
+            debug(f"[C]", flag='match_adv_wc')
+            debug(f"0) {state = }", flag='match_adv_wc')
+
             state = wildcard.matches(inverted_similars[0], state)
             if state is None:
                 return None
 
+            debug(f"1) {state = }", flag='match_adv_wc')
+
             inverted_match_table.remove_key(inverted_similars[0])
             inverted_match_table.remove_value(wildcard)
 
+            debug(f"2) {state = }", flag='match_adv_wc')
+
             return base_match_table, inverted_match_table, state
 
-        combined_values = type(self)(base_similars, inverted_similars)
+        if not inverted:
+            combined_values = type(self)(base_similars, inverted_similars)
+        else:
+            combined_values = type(self)(inverted_similars, base_similars)
 
-        if inverted:
-            combined_values = -combined_values
+        debug(f"{combined_values = }", flag='match_adv_wc')
+        debug(f"0) {state = }", flag='match_adv_wc')
 
-        state = wildcard.matches(combined_values)
+        state = wildcard.matches(combined_values, state)
         if state is None:
             return None
+
+        debug(f"1) {state = }", flag='match_adv_wc')
 
         for s in base_similars:
             base_match_table.remove_key(s)
@@ -643,40 +682,52 @@ class AdvancedBinOp(Node, ABC):
         debug(f"{state = }", flag='match_adv_wc')
 
         debug(f"Starting to match base values", flag='match_adv_wc')
+        inc_indent()
         for value in list(base_match_table.keys()):
             if value not in list(base_match_table.keys()):
                 debug(f"{value} was not found in {base_match_table = }, skipping...", flag='match_adv_wc')
                 continue
 
+            debug(f"====", flag='match_adv_wc')
             debug(f"attempting removal of wildcard match {value=} ", flag='match_adv_wc')
-            debug(f"    {base_match_table.get_from_key(value)[0] = }", flag='match_adv_wc')
-            debug(f"    {base_match_table = }", flag='match_adv_wc')
-            debug(f"    {inverted_match_table = }", flag='match_adv_wc')
-            debug(f"    {state = }", flag='match_adv_wc')
+            inc_indent()
+            debug(f"{base_match_table.get_from_key(value)[0] = }", flag='match_adv_wc')
+            debug(f"{base_match_table = }", flag='match_adv_wc')
+            debug(f"{inverted_match_table = }", flag='match_adv_wc')
+            debug(f"{state = }", flag='match_adv_wc')
+
             r = self._remove_wildcard_match(value, base_match_table.get_from_key(value)[0], base_match_table,
                                             inverted_match_table, state, False)
-
+            dec_indent()
             if r is None:
                 debug(f"Something went wrong while removing wildcard match, aborting...", flag='match_adv_wc')
                 return None
             base_match_table, inverted_match_table, state = r
+        dec_indent()
 
         debug(f"Starting to match inverted values", flag='match_adv_wc')
+        inc_indent()
         for value in list(inverted_match_table.keys()):
             if value not in list(inverted_match_table.keys()):
                 debug(f"{value} was not found in {inverted_match_table = }, skipping...", flag='match_adv_wc')
                 continue
             debug(f"attempting removal of wildcard match {value=} ", flag='match_adv_wc')
-            debug(f"    {inverted_match_table.get_from_key(value)[0] = }", flag='match_adv_wc')
-            debug(f"    {base_match_table = }", flag='match_adv_wc')
-            debug(f"    {inverted_match_table = }", flag='match_adv_wc')
-            debug(f"    {state = }", flag='match_adv_wc')
+            inc_indent()
+            debug(f"{inverted_match_table.get_from_key(value)[0] = }", flag='match_adv_wc')
+            debug(f"{base_match_table = }", flag='match_adv_wc')
+            debug(f"{inverted_match_table = }", flag='match_adv_wc')
+            debug(f"{state = }", flag='match_adv_wc')
+            inc_indent()
             r = self._remove_wildcard_match(value, inverted_match_table.get_from_key(value)[0], base_match_table,
                                             inverted_match_table, state, True)
+
+            dec_indent()
+            dec_indent()
             if r is None:
                 debug(f"Something went wrong while removing wildcard match, aborting...", flag='match_adv_wc')
                 return None
             base_match_table, inverted_match_table, state = r
+        dec_indent()
 
         if len(list(base_match_table.keys())) != 0 or len(list(inverted_match_table.keys())) != 0:
             return None

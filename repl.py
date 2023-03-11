@@ -59,8 +59,9 @@ def repl():
 
     while True:
         try:
-            op = input(f"{LIGHT_GRAY}% {END}")
-        except EOFError:
+            op = input(f"{LIGHT_GRAY}% {END}").strip().lower()
+        except (EOFError, KeyboardInterrupt):
+            print('\n')
             break
 
         if not op:

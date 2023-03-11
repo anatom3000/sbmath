@@ -147,13 +147,5 @@ def replace(print_back=False):
         result = expr.replace(oldp, newp)
         print(f" => {result}")
 
-
-def fix_commutative_wildcard_match():
-    e = parse("(x-1)(x+1)")
-    p = parse("([a]+[b])([a]-[b])")
-
-    print(p.matches(e))
-    # print(e.matches(p))
-
 if __name__ == '__main__':
     repl()

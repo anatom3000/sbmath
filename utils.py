@@ -26,7 +26,7 @@ def dec_indent():
 
 def debug(data, /, flag=''):
     if DEBUG and flag in DEBUG_FLAGS:
-        print("  " * DEBUG_INDENT, data, file=sys.stderr, sep='')
+        print("| " * DEBUG_INDENT, data, file=sys.stderr, sep='')
 
 
 K = TypeVar("K", bound=Hashable)

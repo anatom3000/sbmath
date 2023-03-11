@@ -75,114 +75,121 @@ def repl():
 
             continue
 
-        if op == 'eq':
-            try:
-                expr1 = parse(input(f'{LIGHT_GRAY}Expr 1: {END}'))
-            except EOFError: break
-            if expr1 is None:
-                continue
-            try:
-                expr2 = parse(input(f'{LIGHT_GRAY}Expr 2: {END}'))
-            except EOFError: break
-            if expr2 is None:
-                continue
-            result = expr1 == expr2
+        try:
+            if op == 'eq':
+                try:
+                    expr1 = parse(input(f'{LIGHT_GRAY}Expr 1: {END}'))
+                except EOFError: break
+                if expr1 is None:
+                    continue
+                try:
+                    expr2 = parse(input(f'{LIGHT_GRAY}Expr 2: {END}'))
+                except EOFError: break
+                if expr2 is None:
+                    continue
+                result = expr1 == expr2
 
-        elif op == 'approx':
-            try:
-                expr = parse(input(f"{LIGHT_GRAY}Expr: {END}"))
-            except EOFError:
-                break
-            if expr is None:
-                continue
-            result = expr.approximate()
+            elif op == 'approx':
+                try:
+                    expr = parse(input(f"{LIGHT_GRAY}Expr: {END}"))
+                except EOFError:
+                    break
+                if expr is None:
+                    continue
+                result = expr.approximate()
 
-        elif op == 'eval':
-            try:
-                expr = parse(input(f"{LIGHT_GRAY}Expr: {END}"))
-            except EOFError:
-                break
-            if expr is None:
-                continue
-            result = expr.approximate()
+            elif op == 'eval':
+                try:
+                    expr = parse(input(f"{LIGHT_GRAY}Expr: {END}"))
+                except EOFError:
+                    break
+                if expr is None:
+                    continue
+                result = expr.approximate()
 
-        elif op == 'reduce':
-            try:
-                expr = parse(input(f"{LIGHT_GRAY}Expr: {END}"))
-            except EOFError:
-                break
-            if expr is None:
-                continue
-            result = expr.reduce()
+            elif op == 'reduce':
+                try:
+                    expr = parse(input(f"{LIGHT_GRAY}Expr: {END}"))
+                except EOFError:
+                    break
+                if expr is None:
+                    continue
+                result = expr.reduce()
 
-        elif op == 'reduce_no_eval':
-            try:
-                expr = parse(input(f"{LIGHT_GRAY}Expr: {END}"))
-            except EOFError:
-                break
-            if expr is None:
-                continue
-            result = expr.reduce_no_eval()
+            elif op == 'reduce_no_eval':
+                try:
+                    expr = parse(input(f"{LIGHT_GRAY}Expr: {END}"))
+                except EOFError:
+                    break
+                if expr is None:
+                    continue
+                result = expr.reduce_no_eval()
 
-        elif op == 'match':
-            try:
-                pat = parse(input(f"{LIGHT_GRAY}Pattern: {END}"))
-            except EOFError:
-                break
-            if pat is None:
-                continue
-            try:
-                expr = parse(input(f"{LIGHT_GRAY}Expr: {END}"))
-            except EOFError:
-                break
-            if expr is None:
-                continue
-            result = pat.matches(expr)
+            elif op == 'match':
+                try:
+                    pat = parse(input(f"{LIGHT_GRAY}Pattern: {END}"))
+                except EOFError:
+                    break
+                if pat is None:
+                    continue
+                try:
+                    expr = parse(input(f"{LIGHT_GRAY}Expr: {END}"))
+                except EOFError:
+                    break
+                if expr is None:
+                    continue
+                result = pat.matches(expr)
 
-        elif op == 'replace':
-            try:
-                pat_old = parse(input(f"{LIGHT_GRAY}Old pattern: {END}"))
-            except EOFError:
-                break
-            if pat_old is None:
-                continue
-            try:
-                pat_new = parse(input(f"{LIGHT_GRAY}New pattern: {END}"))
-            except EOFError:
-                break
-            if pat_new is None:
-                continue
-            try:
-                expr = parse(input(f"{LIGHT_GRAY}Expr: {END}"))
-            except EOFError:
-                break
-            if expr is None:
-                continue
-            result = expr.replace(pat_old, pat_new)
+            elif op == 'replace':
+                try:
+                    pat_old = parse(input(f"{LIGHT_GRAY}Old pattern: {END}"))
+                except EOFError:
+                    break
+                if pat_old is None:
+                    continue
+                try:
+                    pat_new = parse(input(f"{LIGHT_GRAY}New pattern: {END}"))
+                except EOFError:
+                    break
+                if pat_new is None:
+                    continue
+                try:
+                    expr = parse(input(f"{LIGHT_GRAY}Expr: {END}"))
+                except EOFError:
+                    break
+                if expr is None:
+                    continue
+                result = expr.replace(pat_old, pat_new)
 
-        elif op == 'contains':
-            try:
-                expr = parse(input(f"{LIGHT_GRAY}Expr: {END}"))
-            except EOFError:
-                break
-            if expr is None:
-                continue
-            try:
-                pat = parse(input(f"{LIGHT_GRAY}Pattern: {END}"))
-            except EOFError:
-                break
-            if pat is None:
-                continue
-            result = expr.contains(pat)
+            elif op == 'contains':
+                try:
+                    expr = parse(input(f"{LIGHT_GRAY}Expr: {END}"))
+                except EOFError:
+                    break
+                if expr is None:
+                    continue
+                try:
+                    pat = parse(input(f"{LIGHT_GRAY}Pattern: {END}"))
+                except EOFError:
+                    break
+                if pat is None:
+                    continue
+                result = expr.contains(pat)
 
-        elif op == 'debug':
-            utils.DEBUG = not utils.DEBUG
+            elif op == 'debug':
+                utils.DEBUG = not utils.DEBUG
 
-            if utils.DEBUG:
-                result = "Debugging enabled!"
+                if utils.DEBUG:
+                    result = "Debugging enabled!"
+                else:
+                    result = "Debugging disabled!"
+
             else:
-                result = "Debugging disabled!"
-        else:
-            raise RuntimeError("operation not properly handled")
+                raise RuntimeError("operation not properly handled")
+
+        except Exception as exc:
+            print(f"{RED}An error occured during execution of operation:")
+            print(f"{exc.__class__.__name__}: {exc}{END}")
+            continue
 
         print(f" => {YELLOW}{result}{END}")

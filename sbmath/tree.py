@@ -15,8 +15,10 @@ from numbers import Real
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 
-import utils
-from utils import debug, inc_indent, dec_indent
+from . import _utils
+
+# debug functions
+from ._utils import debug, inc_indent, dec_indent
 
 
 class Node(ABC):

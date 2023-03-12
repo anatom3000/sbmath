@@ -5,11 +5,7 @@ from numbers import Real
 
 import sly
 
-import tree
-
-
-class ParsingError(Exception):
-    pass
+from . import tree
 
 
 # noinspection PyUnboundLocalVariable,PyUnresolvedReferences
@@ -179,6 +175,10 @@ def parse(data: str | Real) -> Optional[tree.Node]:
         raise ParsingError(f"parser returned {repr(result)} of type {type(result).__name__}, expected type Node")
 
     return result
+
+
+class ParsingError(Exception):
+    pass
 
 
 __all__ = ["parse", "ParsingError"]

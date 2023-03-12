@@ -2,9 +2,8 @@ import atexit
 import re
 import readline
 
-import utils
-# noinspection PyCompatibility
-from parser import parse
+from . import _utils
+from .parser import parse
 
 RED = "\033[0;31m"
 YELLOW = "\033[1;33m"

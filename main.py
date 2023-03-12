@@ -1,7 +1,7 @@
-# noinspection PyCompatibility
-from parser import parse, ParsingError
+from sbmath import parse
+from sbmath.parser import ParsingError
 
-from repl import repl
+from sbmath.repl import repl
 
 
 def matches(print_back=False):

@@ -3,6 +3,7 @@ from collections import defaultdict
 from collections.abc import Hashable, Iterable
 from typing import TypeVar
 
+
 DEBUG = False
 DEBUG_FLAGS = (
     # "match",

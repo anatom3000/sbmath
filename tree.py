@@ -152,11 +152,11 @@ class Node(ABC):
 
     # TODO: implement maximum reducing depth
     @abstractmethod
-    def reduce(self) -> Node:
+    def reduce(self, depth=-1) -> Node:
         pass
 
-    def reduce_no_eval(self) -> Node:
-        return self.reduce()
+    def reduce_no_eval(self, depth=-1) -> Node:
+        return self.reduce(depth)
 
     @abstractmethod
     def contains(self, pattern: Node) -> bool:
@@ -180,7 +180,7 @@ class Leaf(Node, ABC):
     def __str__(self):
         return str(self.data)
 
-    def reduce(self) -> Node:
+    def reduce(self, depth=-1) -> Node:
         return self
 
     def contains(self, pattern: Node) -> bool:
@@ -286,7 +286,7 @@ class Wildcard(Node):
     def approximate(self) -> float:
         raise TypeError("can't approximate a wildcard")
 
-    def reduce(self) -> Node:
+    def reduce(self, depth=-1) -> Node:
         return self
 
     def __str__(self):
@@ -326,15 +326,17 @@ class AdvancedBinOp(Node, ABC):
     def _should_invert_value(value: Node) -> bool:
         pass
 
-    def reduce_no_eval(self) -> Node:
+    def reduce_no_eval(self, depth=-1) -> Node:
+        if depth == 0:
+            return self
 
         value_occurences = defaultdict(int)
 
         for value in self.base_values:
-            value_occurences[value.reduce()] += 1
+            value_occurences[value.reduce(depth-1)] += 1
 
         for value in self.inverted_values:
-            value_occurences[value.reduce()] -= 1
+            value_occurences[value.reduce(depth-1)] -= 1
 
         base_values = []
         inverted_values = []
@@ -373,7 +375,10 @@ class AdvancedBinOp(Node, ABC):
 
         return type(self)(base_values, inverted_values)
 
-    def reduce(self) -> Node:
+    def reduce(self, depth=-1) -> Node:
+
+        if depth == 0:
+            return self
 
         eval_part = type(self)(
             filter(lambda x: x.is_evaluable(), self.base_values),
@@ -393,7 +398,7 @@ class AdvancedBinOp(Node, ABC):
         else:
             non_eval_part.base_values.append(eval_result)
 
-        return non_eval_part.reduce_no_eval()
+        return non_eval_part.reduce_no_eval(depth)
 
     # --- MATCH INTERNAL FUNCTIONS ---
     def _match_evaluable(self, value: Node, state: MatchResult = None) -> Optional[MatchResult]:
@@ -989,7 +994,7 @@ class MulAndDiv(AdvancedBinOp):
 
     @staticmethod
     def _repeat_value(value: Node, times: int) -> Node:
-        return Pow(Value(times), value)
+        return Pow(value, Value(times))
 
     @staticmethod
     def _invert_value(value: Node) -> Node:
@@ -1086,9 +1091,12 @@ class BinOp(Node, ABC):
 
         return self.left == other.left and self.right == other.right
 
-    def reduce(self) -> Node:
-        reduced_left = self.left.reduce()
-        reduced_right = self.right.reduce()
+    def reduce(self, depth=-1) -> Node:
+        if depth == 0:
+            return self
+
+        reduced_left = self.left.reduce(depth-1)
+        reduced_right = self.right.reduce(depth-1)
 
         if reduced_right.is_evaluable():
             if reduced_left.is_evaluable():

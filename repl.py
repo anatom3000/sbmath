@@ -110,11 +110,21 @@ def repl():
             elif op == 'reduce':
                 try:
                     expr = parse(input(f"{LIGHT_GRAY}Expr: {END}"))
+                    depth = input(f"{LIGHT_GRAY}Depth (leave blank for no limit): {END}")
                 except EOFError:
                     break
                 if expr is None:
                     continue
-                result = expr.reduce()
+
+                if depth:
+                    try:
+                        depth = int(depth)
+                    except ValueError:
+                        continue
+                else:
+                    depth = -1
+
+                result = expr.reduce(depth)
 
             elif op == 'reduce_no_eval':
                 try:

@@ -15,10 +15,10 @@ from numbers import Real
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 
-from . import _utils
+from .. import _utils
 
 # debug functions
-from ._utils import debug, inc_indent, dec_indent
+from .._utils import debug, inc_indent, dec_indent
 
 
 class Node(ABC):
@@ -196,116 +196,6 @@ class Leaf(Node, ABC):
         self.data = data
 
 
-class Value(Leaf):
-    def __neg__(self):
-        return Value(-self.data)
-
-    def __hash__(self):
-        return hash(self.uuid)  # can't use id(self) since id changes when copying
-
-    def __str__(self):
-        if self.data % 1 == 0:
-            return str(int(self.data))
-
-        return str(self.data)
-
-    def is_evaluable(self) -> bool:
-        return True
-
-    def evaluate(self) -> Node:
-        return self
-
-    def approximate(self) -> float:
-        return self.data
-
-    def __init__(self, data):
-        super().__init__(data)
-        self.uuid = uuid.uuid1()
-
-
-class Variable(Leaf):
-
-    def is_evaluable(self) -> bool:
-        return False
-
-    def evaluate(self) -> Node:
-        raise TypeError("can't evaluate a variable")
-
-    def approximate(self) -> float:
-        raise TypeError("can't approximate a variable")
-
-
-class Wildcard(Node):
-    def __eq__(self, other):
-        if not isinstance(other, Wildcard):
-            return NotImplemented
-
-        return self.name == other.name and self.constraints == other.constraints
-
-    def __hash__(self):
-        return hash(str(self))
-
-    def contains(self, pattern: Node) -> bool:
-        return pattern.matches(self) is not None
-
-    def _match_contraints(self, value: Node) -> bool:
-        if "eval" in self.constraints.keys():
-            if self.constraints["eval"] == Value(1.0) and not value.is_evaluable():
-                return False
-            if self.constraints["eval"] == Value(0.0) and value.is_evaluable():
-                return False
-
-        return True
-
-    def matches(self, value: Node, state: MatchResult = None) -> Optional[MatchResult]:
-        if state is None:
-            state = MatchResult()
-
-        if self.name == '_':
-            return state if self._match_contraints(value) else None
-
-        if self.name in state.wildcards.keys() and value.matches(state.wildcards[self.name]) is None:
-            return None
-
-        if self._match_contraints(value):
-            state.wildcards[self.name] = value
-            return state
-
-        return None
-
-    def _replace_identifiers(self, match_result: MatchResult) -> Node:
-        if self.name not in match_result.wildcards:
-            raise ReplacingError(f"name '{self.name}' not found in ID mapping")
-
-        return match_result.wildcards[self.name]
-
-    def is_evaluable(self) -> bool:
-        return False
-
-    def evaluate(self) -> Node:
-        raise TypeError("can't evaluate a wildcard")
-
-    def approximate(self) -> float:
-        raise TypeError("can't approximate a wildcard")
-
-    def reduce(self, depth=-1) -> Node:
-        return self
-
-    def __str__(self):
-        text = f"[{self.name}, "
-
-        for k, v in self.constraints.items():
-            text += f"{k}={v}, "
-
-        text = text[:-2] + "]"
-
-        return text
-
-    def __init__(self, name: str, **constraints: Node):
-        self.name = name
-        self.constraints = constraints
-
-
 class AdvancedBinOp(Node, ABC):
     base_operation_symbol: str
     inverse_operation_symbol: str
@@ -378,7 +268,6 @@ class AdvancedBinOp(Node, ABC):
         return type(self)(base_values, inverted_values)
 
     def reduce(self, depth=-1) -> Node:
-
         if depth == 0:
             return self
 
@@ -392,7 +281,13 @@ class AdvancedBinOp(Node, ABC):
             filter(lambda x: not x.is_evaluable(), self.inverted_values)
         )
 
+        inc_indent()
+        debug(f"{eval_part = }", flag='reduce')
+        debug(f"{non_eval_part = }", flag='reduce')
+
         eval_result = eval_part.evaluate()
+
+        debug(f"{eval_result = }", flag='reduce')
 
         if isinstance(eval_result, type(self)):
             non_eval_part.base_values += eval_result.base_values
@@ -667,6 +562,7 @@ class AdvancedBinOp(Node, ABC):
 
     def _match_wildcards(self, value: AdvancedBinOp, state: MatchResult) -> Optional[MatchResult]:
 
+        # TODO: add indices in match table to each values so that identical values don't overwrite each other
         r = self._build_match_tables(value, state)
         if r is None:
             debug(f"No match found, aborting...", flag='match_adv_wc')
@@ -885,6 +781,208 @@ class AdvancedBinOp(Node, ABC):
                     self.inverted_values.append(val)
 
 
+class BinOp(Node, ABC):
+    name: str
+    identity: Node
+
+    def __eq__(self, other):
+        if not isinstance(other, type(self)):
+            return NotImplemented
+
+        return self.left == other.left and self.right == other.right
+
+    def reduce(self, depth=-1) -> Node:
+        if depth == 0:
+
+            return self
+
+        reduced_left = self.left.reduce(depth-1)
+        reduced_right = self.right.reduce(depth-1)
+
+        # TODO: move evaluating part into a seperate function
+        if reduced_right.is_evaluable():
+            if reduced_left.is_evaluable():
+                return type(self)(reduced_left, reduced_right).evaluate()
+
+            if reduced_right.evaluate() == self.identity.evaluate():
+                return reduced_left
+
+        return type(self)(reduced_left, reduced_right)
+
+    def matches(self, value: Node, state: MatchResult = None) -> Optional[MatchResult]:
+        if state is None:
+            state = MatchResult()
+
+        # TODO: try matching without reducing first
+
+        reduced_self = self.reduce()
+        reduced_value = value.reduce()
+
+        if not isinstance(reduced_self, type(self)):
+            return reduced_self.matches(reduced_value, state)
+
+        if reduced_self.is_evaluable() and reduced_value.is_evaluable():
+            return state if reduced_self.evaluate() == reduced_value.evaluate() else None
+
+        if not isinstance(reduced_value, type(self)):
+            return None
+
+        left_match = reduced_self.left.matches(reduced_value.left, state)
+        if left_match is None:
+            return None
+
+        right_match = reduced_self.right.matches(reduced_value.right, left_match)
+
+        if right_match is None:
+            return None
+
+        return right_match
+
+    # noinspection PyProtectedMember
+    def _replace_identifiers(self, match_result: MatchResult) -> Node:
+        return type(self)(self.left._replace_identifiers(match_result), self.right._replace_identifiers(match_result))
+
+    def is_evaluable(self) -> bool:
+        return self.left.is_evaluable() and self.right.is_evaluable()
+
+    def evaluate(self) -> Node:
+        left = self.left.evaluate()
+        right = self.right.evaluate()
+
+        return type(self)(left, right).reduce_no_eval()
+
+    def contains(self, pattern: Node) -> bool:
+        return pattern.matches(self) is not None or self.left.contains(pattern) or self.right.contains(pattern)
+
+    def __init__(self, left: Node, right: Node):
+        self.left = left
+        self.right = right
+
+    @staticmethod
+    @abstractmethod
+    def approximator(left: float, right: float) -> float:
+        pass
+
+    def approximate(self) -> float:
+        return self.approximator(self.left.approximate(), self.right.approximate())
+
+    def __str__(self):
+        return f"{self.left} {self.name} {self.right}"
+
+    def __hash__(self):
+        return hash(str(self))
+
+
+class Value(Leaf):
+    def __neg__(self):
+        return Value(-self.data)
+
+    def __hash__(self):
+        return hash(self.uuid)  # can't use id(self) since id changes when copying
+
+    def __str__(self):
+        if self.data % 1 == 0:
+            return str(int(self.data))
+
+        return str(self.data)
+
+    def is_evaluable(self) -> bool:
+        return True
+
+    def evaluate(self) -> Node:
+        return self
+
+    def approximate(self) -> float:
+        return self.data
+
+    def __init__(self, data):
+        super().__init__(data)
+        self.uuid = uuid.uuid1()
+
+
+class Variable(Leaf):
+
+    def is_evaluable(self) -> bool:
+        return False
+
+    def evaluate(self) -> Node:
+        raise TypeError("can't evaluate a variable")
+
+    def approximate(self) -> float:
+        raise TypeError("can't approximate a variable")
+
+
+class Wildcard(Node):
+    def __eq__(self, other):
+        if not isinstance(other, Wildcard):
+            return NotImplemented
+
+        return self.name == other.name and self.constraints == other.constraints
+
+    def __hash__(self):
+        return hash(str(self))
+
+    def contains(self, pattern: Node) -> bool:
+        return pattern.matches(self) is not None
+
+    def _match_contraints(self, value: Node) -> bool:
+        if "eval" in self.constraints.keys():
+            if self.constraints["eval"] == Value(1.0) and not value.is_evaluable():
+                return False
+            if self.constraints["eval"] == Value(0.0) and value.is_evaluable():
+                return False
+
+        return True
+
+    def matches(self, value: Node, state: MatchResult = None) -> Optional[MatchResult]:
+        if state is None:
+            state = MatchResult()
+
+        if self.name == '_':
+            return state if self._match_contraints(value) else None
+
+        if self.name in state.wildcards.keys() and value.matches(state.wildcards[self.name]) is None:
+            return None
+
+        if self._match_contraints(value):
+            state.wildcards[self.name] = value
+            return state
+
+        return None
+
+    def _replace_identifiers(self, match_result: MatchResult) -> Node:
+        if self.name not in match_result.wildcards:
+            raise ReplacingError(f"name '{self.name}' not found in ID mapping")
+
+        return match_result.wildcards[self.name]
+
+    def is_evaluable(self) -> bool:
+        return False
+
+    def evaluate(self) -> Node:
+        raise TypeError("can't evaluate a wildcard")
+
+    def approximate(self) -> float:
+        raise TypeError("can't approximate a wildcard")
+
+    def reduce(self, depth=-1) -> Node:
+        return self
+
+    def __str__(self):
+        text = f"[{self.name}, "
+
+        for k, v in self.constraints.items():
+            text += f"{k}={v}, "
+
+        text = text[:-2] + "]"
+
+        return text
+
+    def __init__(self, name: str, **constraints: Node):
+        self.name = name
+        self.constraints = constraints
+
+
 class AddAndSub(AdvancedBinOp):
     base_operation_symbol = '+'
 
@@ -1028,16 +1126,25 @@ class MulAndDiv(AdvancedBinOp):
 
     def evaluate(self) -> Node:
         value = Value(1.0)
+        others = Value(1.0)
         for c in self.base_values:
-            value *= c.evaluate()
+            ev = c.evaluate()
+            if isinstance(ev, Value):
+                value.data *= ev.data
+                continue
+            others *= ev
 
         for c in self.inverted_values:
-            value /= c.evaluate()
+            ev = c.evaluate()
+            if isinstance(ev, Value):
+                value.data /= ev.data
+                continue
+            others /= ev
 
-        return value.reduce_no_eval()
+        return (value * others).reduce_no_eval()
 
     def approximate(self) -> float:
-        result = 0.0
+        result = 1.0
         for c in self.base_values:
             result *= c.approximate()
         for c in self.inverted_values:
@@ -1081,94 +1188,6 @@ class MulAndDiv(AdvancedBinOp):
             return MulAndDiv([other] + self.inverted_values, self.base_values)
         else:
             return NotImplemented
-
-
-class BinOp(Node, ABC):
-    name: str
-    identity: Node
-
-    def __eq__(self, other):
-        if not isinstance(other, type(self)):
-            return NotImplemented
-
-        return self.left == other.left and self.right == other.right
-
-    def reduce(self, depth=-1) -> Node:
-        if depth == 0:
-            return self
-
-        reduced_left = self.left.reduce(depth-1)
-        reduced_right = self.right.reduce(depth-1)
-
-        if reduced_right.is_evaluable():
-            if reduced_left.is_evaluable():
-                return type(self)(reduced_left, reduced_right).evaluate()
-
-            if reduced_right.evaluate() == self.identity.evaluate():
-                return reduced_left
-
-        return type(self)(reduced_left, reduced_right)
-
-    def matches(self, value: Node, state: MatchResult = None) -> Optional[MatchResult]:
-        if state is None:
-            state = MatchResult()
-
-        reduced_self = self.reduce()
-        reduced_value = value.reduce()
-
-        if not isinstance(reduced_self, type(self)):
-            return reduced_self.matches(reduced_value, state)
-
-        if reduced_self.is_evaluable() and reduced_value.is_evaluable():
-            return state if reduced_self.evaluate() == reduced_value.evaluate() else None
-
-        if not isinstance(reduced_value, type(self)):
-            return None
-
-        left_match = reduced_self.left.matches(reduced_value.left, state)
-        if left_match is None:
-            return None
-
-        right_match = reduced_self.right.matches(reduced_value.right, left_match)
-
-        if right_match is None:
-            return None
-
-        return right_match
-
-    # noinspection PyProtectedMember
-    def _replace_identifiers(self, match_result: MatchResult) -> Node:
-        return type(self)(self.left._replace_identifiers(match_result), self.right._replace_identifiers(match_result))
-
-    def is_evaluable(self) -> bool:
-        return self.left.is_evaluable() and self.right.is_evaluable()
-
-    def evaluate(self) -> Node:
-        left = self.left.evaluate()
-        right = self.right.evaluate()
-
-        return type(self)(left, right).reduce_no_eval()
-
-    def contains(self, pattern: Node) -> bool:
-        return pattern.matches(self) is not None or self.left.contains(pattern) or self.right.contains(pattern)
-
-    def __init__(self, left: Node, right: Node):
-        self.left = left
-        self.right = right
-
-    @staticmethod
-    @abstractmethod
-    def approximator(left: float, right: float) -> float:
-        pass
-
-    def approximate(self) -> float:
-        return self.approximator(self.left.approximate(), self.right.approximate())
-
-    def __str__(self):
-        return f"{self.left} {self.name} {self.right}"
-
-    def __hash__(self):
-        return hash(str(self))
 
 
 class Pow(BinOp):

@@ -4,12 +4,12 @@ from collections.abc import Hashable, Iterable
 from typing import TypeVar
 
 
-DEBUG = False
+DEBUG = True
 DEBUG_FLAGS = (
-    # "match",
-    "match_adv_wc",
-    "match_wc",
-    # "reduce",
+    "match",
+    # "match_adv_wc",
+    # "match_wc",
+    "reduce",
     # "misc"
 )
 DEBUG_INDENT = 0

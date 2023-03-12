@@ -104,7 +104,7 @@ def repl():
                     break
                 if expr is None:
                     continue
-                result = expr.approximate()
+                result = expr.evaluate()
 
             elif op == 'reduce':
                 try:
@@ -186,9 +186,9 @@ def repl():
                 result = expr.contains(pat)
 
             elif op == 'debug':
-                utils.DEBUG = not utils.DEBUG
+                _utils.DEBUG = not _utils.DEBUG
 
-                if utils.DEBUG:
+                if _utils.DEBUG:
                     result = "Debugging enabled!"
                 else:
                     result = "Debugging disabled!"

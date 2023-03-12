@@ -150,6 +150,7 @@ class Node(ABC):
             return None
         return new
 
+    # TODO: implement maximum reducing depth
     @abstractmethod
     def reduce(self) -> Node:
         pass

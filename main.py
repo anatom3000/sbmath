@@ -147,5 +147,15 @@ def replace(print_back=False):
         result = expr.replace(oldp, newp)
         print(f" => {result}")
 
+
+def benchmark():
+    import timeit
+
+    setup = """from parser import parse; expr = parse("a+b+c+d+e+f+g+h+i+j+k+l+m+o+p+q+r"); pattern = parse("[A]+[B]+[C]+[D]+[E]+[F]+[G]+[H]")"""
+
+    print(timeit.timeit(stmt="pattern.matches(expr)", setup=setup, number=1000), 'ms')
+
+
 if __name__ == '__main__':
+    # TODO: implement a context system (to store functions, variables, etc.)
     repl()

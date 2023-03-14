@@ -144,7 +144,7 @@ def replace(print_back=False):
         if None in (expr, oldp, newp):
             continue
 
-        result = expr.replace(oldp, newp)
+        result = expr.morph(oldp, newp)
         print(f" => {result}")
 
 
@@ -171,4 +171,4 @@ def funcs():
 
 if __name__ == '__main__':
     # TODO: implement a context system (to store functions, variables, etc.)
-    funcs()
+    repl()

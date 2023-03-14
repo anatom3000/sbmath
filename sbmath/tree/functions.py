@@ -6,6 +6,7 @@ from abc import ABC, abstractmethod
 from .base import Node, Variable, MatchResult, Value
 from .._utils import debug, inc_indent, dec_indent
 
+
 class FunctionNode(Node, ABC):
     name: str
 
@@ -17,6 +18,9 @@ class FunctionNode(Node, ABC):
 
     def _replace_identifiers(self, match_result: MatchResult) -> Node:
         return type(self)(self.argument._replace_identifiers(match_result))
+
+    def replace(self, old: Node, new: Node):
+        return new if old.matches(self) else type(self)(self.argument.replace(old, new))
 
     def contains(self, pattern: Node) -> bool:
         return pattern.matches(self) is not None or self.argument.contains(pattern)

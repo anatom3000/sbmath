@@ -22,6 +22,7 @@ from .._utils import debug, inc_indent, dec_indent
 
 
 class Node(ABC):
+    context: Optional[Context] = None
 
     def __neg__(self):
         return -1.0 * self
@@ -141,7 +142,7 @@ class Node(ABC):
     def _replace_identifiers(self, match_result: MatchResult) -> Node:
         pass
 
-    def replace(self, old_pattern: Node, new_pattern: Node) -> Optional[Node]:
+    def morph(self, old_pattern: Node, new_pattern: Node) -> Optional[Node]:
         m = old_pattern.matches(self)
         if m is None:
             return None
@@ -151,6 +152,10 @@ class Node(ABC):
         except ReplacingError:
             return None
         return new
+
+    @abstractmethod
+    def replace(self, old: Node, new: Node):
+        pass
 
     # TODO: implement maximum reducing depth
     @abstractmethod
@@ -190,6 +195,9 @@ class Leaf(Node, ABC):
 
     def _replace_identifiers(self, match_result: MatchResult) -> Node:
         return self
+
+    def replace(self, old: Node, new: Node):
+        return new if old.matches(self) else self
 
     def __init__(self, data):
         super().__init__()
@@ -359,9 +367,9 @@ class AdvancedBinOp(Node, ABC):
         return new_state, remaining_pattern, remaining_value
 
     def _remove_wildcard_match(self, value: Node, wildcard: Wildcard,
-                               base_match_table: utils.BiMultiDict, inverted_match_table: utils.BiMultiDict,
+                               base_match_table: _utils.BiMultiDict, inverted_match_table: _utils.BiMultiDict,
                                state: MatchResult, inverted: bool) \
-            -> Optional[utils.BiMultiDict, utils.BiMultiDict, MatchResult]:
+            -> Optional[_utils.BiMultiDict, _utils.BiMultiDict, MatchResult]:
 
         debug(f"=> Start remove wildcard match:", flag='match_adv_wc')
         inc_indent()
@@ -475,9 +483,9 @@ class AdvancedBinOp(Node, ABC):
 
         return base_match_table, inverted_match_table, state
 
-    def _clean_up_single_wildcards(self, base_match_table: utils.BiMultiDict, inverted_match_table: utils.BiMultiDict,
+    def _clean_up_single_wildcards(self, base_match_table: _utils.BiMultiDict, inverted_match_table: _utils.BiMultiDict,
                                    state: MatchResult) \
-            -> Optional[(utils.BiMultiDict, utils.BiMultiDict, MatchResult)]:
+            -> Optional[(_utils.BiMultiDict, _utils.BiMultiDict, MatchResult)]:
 
         base_match_table = copy.deepcopy(base_match_table)
         inverted_match_table = copy.deepcopy(inverted_match_table)
@@ -517,8 +525,8 @@ class AdvancedBinOp(Node, ABC):
         return base_match_table, inverted_match_table, state
 
     def _build_match_tables(self, value: AdvancedBinOp, state: MatchResult) \
-            -> Optional[tuple[utils.BiMultiDict, utils.BiMultiDict]]:
-        base_match_table = utils.BiMultiDict()
+            -> Optional[tuple[_utils.BiMultiDict, _utils.BiMultiDict]]:
+        base_match_table = _utils.BiMultiDict()
         for val in value.base_values:
             found_one = False
             for wildcard in self.base_values:
@@ -538,7 +546,7 @@ class AdvancedBinOp(Node, ABC):
             if not found_one:
                 return None
 
-        inverted_match_table = utils.BiMultiDict()
+        inverted_match_table = _utils.BiMultiDict()
         for val in value.inverted_values:
             found_one = False
             for wildcard in self.inverted_values:
@@ -724,6 +732,12 @@ class AdvancedBinOp(Node, ABC):
             inverted_values=(x._replace_identifiers(match_result) for x in self.inverted_values)
         )
 
+    def replace(self, old: Node, new: Node):
+        return new if old.matches(self) else type(self)(
+            base_values=(x.replace(old, new) for x in self.base_values),
+            inverted_values=(x.replace(old, new) for x in self.inverted_values)
+        )
+
     def is_evaluable(self) -> bool:
         return all(c.is_evaluable() for c in itertools.chain(self.base_values, self.inverted_values))
 
@@ -842,6 +856,9 @@ class BinOp(Node, ABC):
     def _replace_identifiers(self, match_result: MatchResult) -> Node:
         return type(self)(self.left._replace_identifiers(match_result), self.right._replace_identifiers(match_result))
 
+    def replace(self, old: Node, new: Node):
+        return new if old.matches(self) else type(self)(self.left.replace(old, new), self.right.replace(old, new))
+
     def is_evaluable(self) -> bool:
         return self.left.is_evaluable() and self.right.is_evaluable()
 
@@ -955,6 +972,9 @@ class Wildcard(Node):
             raise ReplacingError(f"name '{self.name}' not found in ID mapping")
 
         return match_result.wildcards[self.name]
+
+    def replace(self, old: Node, new: Node):
+        return new if old.matches(self) else self
 
     def is_evaluable(self) -> bool:
         return False

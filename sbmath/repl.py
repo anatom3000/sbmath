@@ -12,7 +12,7 @@ LIGHT_GRAY = "\033[0;37m"
 CYAN = "\033[0;36m"
 END = "\033[0m"
 
-operations = ['eq', 'approx', 'eval', 'reduce', 'reduce_no_eval', 'match', 'replace', 'contains', 'debug']
+operations = ['eq', 'approx', 'eval', 'reduce', 'reduce_no_eval', 'match', 'replace', 'morph', 'contains', 'debug']
 
 start_text = f"""{CYAN}Interactive shell (alpha){END}
 {CYAN}Available operations:{END}{LIGHT_GREEN} {', '.join(map(repr, operations))}{END}"""
@@ -151,6 +151,27 @@ def repl():
 
             elif op == 'replace':
                 try:
+                    old = parse(input(f"{LIGHT_GRAY}Old node: {END}"))
+                except EOFError:
+                    break
+                if old is None:
+                    continue
+                try:
+                    new = parse(input(f"{LIGHT_GRAY}New node: {END}"))
+                except EOFError:
+                    break
+                if new is None:
+                    continue
+                try:
+                    expr = parse(input(f"{LIGHT_GRAY}Expr: {END}"))
+                except EOFError:
+                    break
+                if expr is None:
+                    continue
+                result = expr.replace(old, new)
+
+            elif op == 'morph':
+                try:
                     pat_old = parse(input(f"{LIGHT_GRAY}Old pattern: {END}"))
                 except EOFError:
                     break
@@ -168,7 +189,7 @@ def repl():
                     break
                 if expr is None:
                     continue
-                result = expr.replace(pat_old, pat_new)
+                result = expr.morph(pat_old, pat_new)
 
             elif op == 'contains':
                 try:

@@ -14,7 +14,7 @@ Run `main.py` to have an all-in-one REPL:
 $ python main.py
 ```
 
-Alternatively you can modify `main.py` to run various specialized repl and/or tests.
+Alternatively you can modify `main.py` to run various specialized REPLs and/or tests.
 
 ### Installation
 

@@ -157,7 +157,6 @@ class Node(ABC):
     def replace(self, old: Node, new: Node):
         pass
 
-    # TODO: implement maximum reducing depth
     @abstractmethod
     def reduce(self, depth=-1) -> Node:
         pass
@@ -807,19 +806,30 @@ class BinOp(Node, ABC):
 
     def reduce(self, depth=-1) -> Node:
         if depth == 0:
-
             return self
 
         reduced_left = self.left.reduce(depth-1)
         reduced_right = self.right.reduce(depth-1)
 
-        # TODO: move evaluating part into a seperate function
         if reduced_right.is_evaluable():
             if reduced_left.is_evaluable():
                 return type(self)(reduced_left, reduced_right).evaluate()
 
             if reduced_right.evaluate() == self.identity.evaluate():
                 return reduced_left
+
+    def reduce_no_eval(self, depth=-1) -> Node:
+        if depth == 0:
+            return self
+
+        reduced_left = self.left.reduce_no_eval(depth-1)
+        reduced_right = self.right.reduce_no_eval(depth-1)
+
+        if reduced_right == self.identity:
+            return reduced_left
+
+        if isinstance(reduced_left, Value) and isinstance(reduced_right, Value):
+            return Value(self.approximator(reduced_left.data, reduced_right.data))
 
         return type(self)(reduced_left, reduced_right)
 

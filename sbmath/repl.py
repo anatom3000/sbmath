@@ -1,6 +1,7 @@
 import atexit
 import re
 import readline
+import traceback
 
 from . import _utils
 from .parser import parse
@@ -219,7 +220,9 @@ def repl():
 
         except Exception as exc:
             print(f"{RED}An error occured during execution of operation:")
-            print(f"{exc.__class__.__name__}: {exc}{END}")
+
+            print(f"{traceback.format_exc()}{END}")
+
             continue
 
         print(f" => {YELLOW}{result}{END}")

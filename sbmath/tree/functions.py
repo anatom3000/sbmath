@@ -47,7 +47,10 @@ class FunctionApplication(Node):
         return self.change_argument(self.argument.reduce(depth-1))
 
     def is_evaluable(self) -> bool:
-        return self.function.can_evaluate(self.argument)
+        try:
+            return self.function.can_evaluate(self.argument)
+        except MissingContextError:
+            return False
 
     def __eq__(self, other: Node) -> bool:
         return isinstance(other, FunctionApplication) and self._function == other._function and self.argument == self.argument

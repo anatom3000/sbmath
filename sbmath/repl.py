@@ -15,7 +15,7 @@ LIGHT_GRAY = "\033[0;37m"
 CYAN = "\033[0;36m"
 END = "\033[0m"
 
-operations = ['eq', 'approx', 'eval', 'reduce', 'reduce_no_eval', 'match', 'replace', 'morph', 'contains', 'debug']
+operations = ['eq', 'approx', 'eval', 'reduce', 'reduce_no_eval', 'match', 'replace', 'morph', 'contains', 'debug', 'exit']
 
 start_text = f"""{CYAN}Interactive shell (alpha){END}
 {CYAN}Available operations:{END}{LIGHT_GREEN} {', '.join(map(repr, operations))}{END}"""
@@ -71,11 +71,12 @@ def repl():
 
         if op not in operations:
             print(f"{RED}Operation not found!{END}", end=' ')
-            print(f"{CYAN}Available operations:{END}{LIGHT_GREEN}", ', '.join(map(repr, operations[:-1])), 'and',
-
-                  repr(operations[-1]), END)
+            print(f"{CYAN}Available operations:{END}{LIGHT_GREEN}", ', '.join(map(repr, operations[:-1])), 'and', repr(operations[-1]), END)
 
             continue
+
+        if op == 'exit':
+            break
 
         try:
             if op == 'eq':

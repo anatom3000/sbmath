@@ -138,6 +138,10 @@ class Parser(sly.Parser):
     def wildcard(self, p):
         return tree.Wildcard(p.IDENT, **p.wc_args)
 
+    @_('IDENT exprblock %prec IMPMUL')
+    def expr(self, p):
+        return tree.FunctionApplication(p.IDENT, p.exprblock)
+
     @_('exprblock exprblock %prec IMPMUL')
     def expr(self, p):
         return p.exprblock0 * p.exprblock1

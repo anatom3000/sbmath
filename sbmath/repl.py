@@ -6,6 +6,8 @@ import traceback
 from . import _utils
 from .parser import parse
 
+from ._utils import debug
+
 RED = "\033[0;31m"
 YELLOW = "\033[1;33m"
 LIGHT_GREEN = "\033[1;32m"
@@ -79,11 +81,13 @@ def repl():
             if op == 'eq':
                 try:
                     expr1 = parse(input(f'{LIGHT_GRAY}Expr 1: {END}'))
+                    debug(f" => {expr1}", flag='repl')
                 except EOFError: break
                 if expr1 is None:
                     continue
                 try:
                     expr2 = parse(input(f'{LIGHT_GRAY}Expr 2: {END}'))
+                    debug(f" => {expr2}", flag='repl')
                 except EOFError: break
                 if expr2 is None:
                     continue
@@ -92,6 +96,7 @@ def repl():
             elif op == 'approx':
                 try:
                     expr = parse(input(f"{LIGHT_GRAY}Expr: {END}"))
+                    debug(f" => {expr}", flag='repl')
                 except EOFError:
                     break
                 if expr is None:
@@ -101,6 +106,7 @@ def repl():
             elif op == 'eval':
                 try:
                     expr = parse(input(f"{LIGHT_GRAY}Expr: {END}"))
+                    debug(f" => {expr}", flag='repl')
                 except EOFError:
                     break
                 if expr is None:
@@ -110,6 +116,8 @@ def repl():
             elif op == 'reduce':
                 try:
                     expr = parse(input(f"{LIGHT_GRAY}Expr: {END}"))
+                    debug(f" => {expr}", flag='repl')
+
                     depth = input(f"{LIGHT_GRAY}Depth (leave blank for no limit): {END}")
                 except EOFError:
                     break
@@ -129,6 +137,7 @@ def repl():
             elif op == 'reduce_no_eval':
                 try:
                     expr = parse(input(f"{LIGHT_GRAY}Expr: {END}"))
+                    debug(f" => {expr}", flag='repl')
                 except EOFError:
                     break
                 if expr is None:
@@ -138,12 +147,14 @@ def repl():
             elif op == 'match':
                 try:
                     pat = parse(input(f"{LIGHT_GRAY}Pattern: {END}"))
+                    debug(f" => {pat}", flag='repl')
                 except EOFError:
                     break
                 if pat is None:
                     continue
                 try:
                     expr = parse(input(f"{LIGHT_GRAY}Expr: {END}"))
+                    debug(f" => {expr}", flag='repl')
                 except EOFError:
                     break
                 if expr is None:
@@ -153,18 +164,21 @@ def repl():
             elif op == 'replace':
                 try:
                     old = parse(input(f"{LIGHT_GRAY}Old node: {END}"))
+                    debug(f" => {old}", flag='repl')
                 except EOFError:
                     break
                 if old is None:
                     continue
                 try:
                     new = parse(input(f"{LIGHT_GRAY}New node: {END}"))
+                    debug(f" => {new}", flag='repl')
                 except EOFError:
                     break
                 if new is None:
                     continue
                 try:
                     expr = parse(input(f"{LIGHT_GRAY}Expr: {END}"))
+                    debug(f" => {expr}", flag='repl')
                 except EOFError:
                     break
                 if expr is None:
@@ -174,18 +188,21 @@ def repl():
             elif op == 'morph':
                 try:
                     pat_old = parse(input(f"{LIGHT_GRAY}Old pattern: {END}"))
+                    debug(f" => {pat_old}", flag='repl')
                 except EOFError:
                     break
                 if pat_old is None:
                     continue
                 try:
                     pat_new = parse(input(f"{LIGHT_GRAY}New pattern: {END}"))
+                    debug(f" => {pat_new}", flag='repl')
                 except EOFError:
                     break
                 if pat_new is None:
                     continue
                 try:
                     expr = parse(input(f"{LIGHT_GRAY}Expr: {END}"))
+                    debug(f" => {expr}", flag='repl')
                 except EOFError:
                     break
                 if expr is None:
@@ -195,12 +212,14 @@ def repl():
             elif op == 'contains':
                 try:
                     expr = parse(input(f"{LIGHT_GRAY}Expr: {END}"))
+                    debug(f" => {expr}", flag='repl')
                 except EOFError:
                     break
                 if expr is None:
                     continue
                 try:
                     pat = parse(input(f"{LIGHT_GRAY}Pattern: {END}"))
+                    debug(f" => {pat}", flag='repl')
                 except EOFError:
                     break
                 if pat is None:

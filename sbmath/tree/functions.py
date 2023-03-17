@@ -54,11 +54,11 @@ class FunctionApplication(Node):
 
     @property
     def function(self) -> Function:
-        if isinstance(self.function, str):
-            if context is None:
+        if isinstance(self._function, str):
+            if self.context is None:
                 raise MissingContextError(f"could not get function '{self._function}' without context")
             else:
-                return self.context.get_function(self._function)
+                return self.cxontext.get_function(self._function)
 
         return self._function
 
@@ -106,7 +106,12 @@ class FunctionApplication(Node):
         return reduced_self._match_no_reduce(reduced_value, state)
 
     def __str__(self):
-        return f"{self.function.name}({self.argument})"
+        try:
+            func_name = self.function.name
+        except MissingContextError:
+            func_name = self._function
+
+        return f"{func_name}({self.argument})"
 
     def __hash__(self):
         return hash(str(self))

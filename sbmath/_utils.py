@@ -6,6 +6,7 @@ from typing import TypeVar
 
 DEBUG = True
 DEBUG_FLAGS = (
+    "repl",
     "match",
     # "match_adv_wc",
     # "match_wc",

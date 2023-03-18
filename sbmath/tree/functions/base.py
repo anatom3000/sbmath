@@ -13,8 +13,8 @@ class Function(ABC):
     name: str
 
     @abstractmethod
-    def reduce_func(self, _argument: Node, _depth: int) -> Optional[Node]:
-        return None
+    def reduce_func(self, argument: Node, depth: int) -> Optional[Node]:
+        pass
 
     @abstractmethod
     def can_evaluate(self, argument: Node) -> bool:
@@ -23,6 +23,53 @@ class Function(ABC):
     @abstractmethod
     def evaluate(self, argument: Node) -> Node:
         pass
+
+
+class PythonFunction(Function):
+
+    def reduce_func(self, argument: Node, _depth: int) -> Optional[Node]:
+        for pattern, image in self.special_values.items():
+            new = argument.morph(pattern, image)
+            if new is not None:
+                return new.reduce(-1)
+
+        return None
+
+    def can_evaluate(self, argument: Node) -> bool:
+        return argument.is_evaluable() and any(pat.matches(argument) for pat in self.special_values.keys())
+
+    def evaluate(self, argument: Node) -> Node:
+        argument = argument.evaluate()
+
+        for pattern, image in self.special_values.items():
+            new = argument.morph(pattern, image)
+            if new is not None:
+                return new.evaluate()
+
+        return Value(self.pyfunc(argument.approximate()))
+
+    def __init__(self, func: Callable[[float], float], special_values: dict[Node, Node] = None, name: str = None):
+        self.pyfunc = func
+        if name is None:
+            name = self.pyfunc.__name__
+        self.name = name
+        self.special_values = {} if special_values is None else special_values
+
+
+class NodeFunction(Function):
+
+    def reduce_func(self, argument: Node, depth: int) -> Optional[Node]:
+        return self.body.replace(self.parameter, argument.reduce(-1))
+
+    def can_evaluate(self, argument: Node) -> bool:
+        return argument.is_evaluable()
+
+    def evaluate(self, argument: Node) -> Node:
+        return self.body.replace(self.parameter, argument.evaluate()).evaluate()
+
+    def __init__(self, parameter: Node, body: Node):
+        self.parameter = parameter
+        self.body = body
 
 
 class FunctionApplication(Node):

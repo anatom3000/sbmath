@@ -27,7 +27,7 @@ $ pip install -r requirements.txt
 - [x] Expression parsing from string
 - [x] Evaluating expressions
 - [ ] Somewhat stable pattern matching
-- [ ] Functions (take AST as argument for advanced transformations e.g. derivative)
+- [x] Functions (take AST as argument for advanced transformations e.g. derivative)
 - [x] Advanced wildcards (match only variables, values, etc.)
 - [ ] Variables constraints (type, range...)
 

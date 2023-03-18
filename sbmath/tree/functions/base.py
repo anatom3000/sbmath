@@ -59,7 +59,7 @@ class PythonFunction(Function):
 class NodeFunction(Function):
 
     def reduce_func(self, argument: Node, depth: int) -> Optional[Node]:
-        return self.body.replace(self.parameter, argument.reduce(-1))
+        return self.body.replace(self.parameter, argument.reduce(depth-1)).reduce(depth)
 
     def can_evaluate(self, argument: Node) -> bool:
         return argument.is_evaluable()
@@ -67,7 +67,8 @@ class NodeFunction(Function):
     def evaluate(self, argument: Node) -> Node:
         return self.body.replace(self.parameter, argument.evaluate()).evaluate()
 
-    def __init__(self, parameter: Node, body: Node):
+    def __init__(self, name: str, parameter: Node, body: Node):
+        self.name = name
         self.parameter = parameter
         self.body = body
 
@@ -110,7 +111,7 @@ class FunctionApplication(Node):
             if self.context is None:
                 raise MissingContextError(f"could not get function '{self._function}' without context")
             else:
-                return self.cxontext.get_function(self._function)
+                return self.context.get_function(self._function)
 
         return self._function
 

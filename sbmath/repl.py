@@ -3,10 +3,11 @@ import re
 import readline
 import traceback
 
-from . import _utils
-from .parser import parse
+from sbmath import _utils
+from sbmath import parser
+from sbmath.tree import Context, NodeFunction
 
-from ._utils import debug
+from sbmath._utils import debug
 
 RED = "\033[0;31m"
 YELLOW = "\033[1;33m"
@@ -15,7 +16,8 @@ LIGHT_GRAY = "\033[0;37m"
 CYAN = "\033[0;36m"
 END = "\033[0m"
 
-operations = ['eq', 'approx', 'eval', 'reduce', 'reduce_no_eval', 'match', 'replace', 'morph', 'contains', 'debug', 'exit']
+operations = ['eq', 'approx', 'eval', 'reduce', 'reduce_no_eval', 'match', 'replace', 'morph', 'contains', 'debug',
+              'exit']
 
 start_text = f"""{CYAN}Interactive shell (alpha){END}
 {CYAN}Available operations:{END}{LIGHT_GREEN} {', '.join(map(repr, operations))}{END}"""
@@ -23,6 +25,15 @@ start_text = f"""{CYAN}Interactive shell (alpha){END}
 BRACKETS = {'(': ')', '[': ']'}
 
 histfile = '.sbmath_history'
+
+
+def get_test_context() -> Context:
+    f = NodeFunction("f", parser.parse("x"), parser.parse("2x+1"))
+
+    context = Context()
+    context.register_function(f)
+
+    return context
 
 
 def _completer(text, state):
@@ -55,7 +66,11 @@ def repl():
         readline.read_history_file(histfile)  # Load previous history
     except FileNotFoundError:
         pass
-    atexit.register(readline.write_history_file, histfile)  # Save new history
+    atexit.register(readline.write_history_file, histfile)  # Save new history*
+
+    context = get_test_context()
+
+    parse = lambda x: parser.parse(x, context=context)
 
     print(start_text)
 
@@ -71,7 +86,8 @@ def repl():
 
         if op not in operations:
             print(f"{RED}Operation not found!{END}", end=' ')
-            print(f"{CYAN}Available operations:{END}{LIGHT_GREEN}", ', '.join(map(repr, operations[:-1])), 'and', repr(operations[-1]), END)
+            print(f"{CYAN}Available operations:{END}{LIGHT_GREEN}", ', '.join(map(repr, operations[:-1])), 'and',
+                  repr(operations[-1]), END)
 
             continue
 
@@ -83,13 +99,15 @@ def repl():
                 try:
                     expr1 = parse(input(f'{LIGHT_GRAY}Expr 1: {END}'))
                     debug(f" => {expr1}", flag='repl')
-                except EOFError: break
+                except EOFError:
+                    break
                 if expr1 is None:
                     continue
                 try:
                     expr2 = parse(input(f'{LIGHT_GRAY}Expr 2: {END}'))
                     debug(f" => {expr2}", flag='repl')
-                except EOFError: break
+                except EOFError:
+                    break
                 if expr2 is None:
                     continue
                 result = expr1 == expr2
@@ -238,10 +256,9 @@ def repl():
             else:
                 raise RuntimeError("operation not properly handled")
 
-        except Exception as exc:
+        except Exception:
             print(f"{RED}An error occured during execution of operation:")
-
-            print(f"{traceback.format_exc()}{END}")
+            debug(f"{traceback.format_exc()}{END}", flag='repl')
 
             continue
 

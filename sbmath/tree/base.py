@@ -25,13 +25,17 @@ class Node(ABC):
     context: Optional[Context] = None
 
     def __neg__(self):
-        return -1.0 * self
+        result = -1.0 * self
+        result.context = self.context
+        return result
 
     def __add__(self, other) -> Node:
         if isinstance(other, Real):
             return AddAndSub.add(self, Value(float(other)))
         elif isinstance(other, Node):
-            return AddAndSub.add(self, other)
+            result = AddAndSub.add(self, other)
+            result.context = self.context
+            return result
         else:
             return NotImplemented
 
@@ -39,7 +43,9 @@ class Node(ABC):
         if isinstance(other, Real):
             return AddAndSub.add(Value(float(other)), self)
         elif isinstance(other, Node):
-            return AddAndSub.add(other, self)
+            result = AddAndSub.add(other, self)
+            result.context = other.context
+            return result
         else:
             return NotImplemented
 
@@ -47,7 +53,9 @@ class Node(ABC):
         if isinstance(other, Real):
             return AddAndSub.sub(self, Value(float(other)))
         elif isinstance(other, Node):
-            return AddAndSub.sub(self, other)
+            result = AddAndSub.sub(self, other)
+            result.context = self.context
+            return result
         else:
             return NotImplemented
 
@@ -55,7 +63,9 @@ class Node(ABC):
         if isinstance(other, Real):
             return AddAndSub.sub(Value(float(other)), self)
         elif isinstance(other, Node):
-            return AddAndSub.sub(other, self)
+            result = AddAndSub.sub(other, self)
+            result.context = other.context
+            return result
         else:
             return NotImplemented
 
@@ -63,7 +73,9 @@ class Node(ABC):
         if isinstance(other, Real):
             return MulAndDiv.mul(self, Value(float(other)))
         elif isinstance(other, Node):
-            return MulAndDiv.mul(self, other)
+            result = MulAndDiv.mul(self, other)
+            result.context = self.context
+            return result
         else:
             return NotImplemented
 
@@ -71,7 +83,9 @@ class Node(ABC):
         if isinstance(other, Real):
             return MulAndDiv.mul(Value(float(other)), self)
         elif isinstance(other, Node):
-            return MulAndDiv.mul(other, self)
+            result = MulAndDiv.mul(other, self)
+            result.context = other.context
+            return result
         else:
             return NotImplemented
 
@@ -79,7 +93,9 @@ class Node(ABC):
         if isinstance(other, Real):
             return MulAndDiv.div(self, Value(float(other)))
         elif isinstance(other, Node):
-            return MulAndDiv.div(self, other)
+            result = MulAndDiv.div(self, other)
+            result.context = self.context
+            return result
         else:
             return NotImplemented
 
@@ -87,7 +103,9 @@ class Node(ABC):
         if isinstance(other, Real):
             return MulAndDiv.div(Value(float(other)), self)
         elif isinstance(other, Node):
-            return MulAndDiv.div(other, self)
+            result = MulAndDiv.div(other, self)
+            result.context = other.context
+            return result
         else:
             return NotImplemented
 
@@ -95,7 +113,9 @@ class Node(ABC):
         if isinstance(other, Real):
             return Pow(self, Value(float(other)))
         elif isinstance(other, Node):
-            return Pow(self, other)
+            result = Pow(self, other)
+            result.context = self.context
+            return result
         else:
             return NotImplemented
 
@@ -103,7 +123,9 @@ class Node(ABC):
         if isinstance(other, Real):
             return Pow(Value(float(other)), self)
         elif isinstance(other, Node):
-            return Pow(other, self)
+            result = Pow(other, self)
+            result.context = other.context
+            return result
         else:
             return NotImplemented
 
@@ -232,10 +254,10 @@ class AdvancedBinOp(Node, ABC):
         value_occurences = defaultdict(int)
 
         for value in self.base_values:
-            value_occurences[value.reduce(depth-1)] += 1
+            value_occurences[value.reduce(depth - 1)] += 1
 
         for value in self.inverted_values:
-            value_occurences[value.reduce(depth-1)] -= 1
+            value_occurences[value.reduce(depth - 1)] -= 1
 
         base_values = []
         inverted_values = []
@@ -773,6 +795,19 @@ class AdvancedBinOp(Node, ABC):
     def __hash__(self):
         return hash(str(self))
 
+    @property
+    def context(self) -> Optional[Context]:
+        return self._context
+
+    @context.setter
+    def context(self, new: Optional[Context]):
+        self._context = new
+
+        for value in self.base_values:
+            value.context = new
+        for value in self.inverted_values:
+            value.context = new
+
     def __init__(self, base_values: Iterable[Node] = None, inverted_values: Iterable[Node] = None):
         self.base_values: list[Node] = []
         self.inverted_values: list[Node] = []
@@ -793,6 +828,13 @@ class AdvancedBinOp(Node, ABC):
                 else:
                     self.inverted_values.append(val)
 
+        if self.base_values:
+            self._context = self.base_values[0].context
+            return
+        if self.inverted_values:
+            self._context = self.inverted_values[0].context
+            return
+
 
 class BinOp(Node, ABC):
     name: str
@@ -808,8 +850,8 @@ class BinOp(Node, ABC):
         if depth == 0:
             return self
 
-        reduced_left = self.left.reduce(depth-1)
-        reduced_right = self.right.reduce(depth-1)
+        reduced_left = self.left.reduce(depth - 1)
+        reduced_right = self.right.reduce(depth - 1)
 
         if reduced_right.is_evaluable():
             if reduced_left.is_evaluable():
@@ -822,8 +864,8 @@ class BinOp(Node, ABC):
         if depth == 0:
             return self
 
-        reduced_left = self.left.reduce_no_eval(depth-1)
-        reduced_right = self.right.reduce_no_eval(depth-1)
+        reduced_left = self.left.reduce_no_eval(depth - 1)
+        reduced_right = self.right.reduce_no_eval(depth - 1)
 
         if reduced_right == self.identity:
             return reduced_left
@@ -881,9 +923,22 @@ class BinOp(Node, ABC):
     def contains(self, pattern: Node) -> bool:
         return pattern.matches(self) is not None or self.left.contains(pattern) or self.right.contains(pattern)
 
+    @property
+    def context(self) -> Optional[Context]:
+        return self._context
+
+    @context.setter
+    def context(self, new: Optional[Context]):
+        self._context = new
+
+        left.context = new
+        right.context = new
+
     def __init__(self, left: Node, right: Node):
         self.left = left
         self.right = right
+
+        self._context = left.context
 
     @staticmethod
     @abstractmethod
@@ -1008,9 +1063,22 @@ class Wildcard(Node):
 
         return text
 
+    @property
+    def context(self) -> Optional[Context]:
+        return self._context
+
+    @context.setter
+    def context(self, new: Optional[Context]):
+        self._context = new
+
+        for c in self.constraints:
+            c.context = new
+
     def __init__(self, name: str, **constraints: Node):
         self.name = name
         self.constraints = constraints
+
+        self._context = None
 
 
 class AddAndSub(AdvancedBinOp):

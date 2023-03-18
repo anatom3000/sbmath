@@ -1,13 +1,14 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+
 
 # from sbmath.tree import Function  # commented import for type annotations without circular imports
 
 
 @dataclass
 class Context:
-    functions: dict[str, Function]
+    functions: dict[str, Function] = field(default_factory=dict)
 
     def register_function(self, func: Function):
         self.functions[func.name] = func

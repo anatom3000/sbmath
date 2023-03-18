@@ -52,6 +52,10 @@ _ = lambda _: (lambda _: None)  # fake value to make mypy happy
 
 # noinspection PyUnresolvedReferences
 class Parser(sly.Parser):
+    def __init__(self, context: tree.Context = None):
+        super().__init__()
+        self.context = context
+
     # Get the token list from the lexer (required)
     tokens = Lexer.tokens
 
@@ -68,23 +72,33 @@ class Parser(sly.Parser):
     # Grammar rules and actions
     @_('expr PLUS expr')
     def expr(self, p):
-        return p.expr0 + p.expr1
+        result = p.expr0 + p.expr1
+        result.context = self.context
+        return result
 
     @_('expr MINUS expr')
     def expr(self, p):
-        return p.expr0 - p.expr1
+        result = p.expr0 - p.expr1
+        result.context = self.context
+        return result
 
     @_('expr TIMES expr')
     def expr(self, p):
-        return p.expr0 * p.expr1
+        result = p.expr0 * p.expr1
+        result.context = self.context
+        return result
 
     @_('expr DIVIDE expr')
     def expr(self, p):
-        return p.expr0 / p.expr1
+        result = p.expr0 / p.expr1
+        result.context = self.context
+        return result
 
     @_('expr POW expr')
     def expr(self, p):
-        return p.expr0 ** p.expr1
+        result = p.expr0 ** p.expr1
+        result.context = self.context
+        return result
 
     @_('MINUS expr %prec UMINUS')
     def expr(self, p):
@@ -112,15 +126,21 @@ class Parser(sly.Parser):
 
     @_('NUMBER')
     def number(self, p):
-        return tree.Value(float(p.NUMBER))
+        result = tree.Value(float(p.NUMBER))
+        result.context = self.context
+        return result
 
     @_('IDENT')
     def ident(self, p):
-        return tree.Variable(p.IDENT)
+        result = tree.Variable(p.IDENT)
+        result.context = self.context
+        return result
 
     @_('LBRACK IDENT RBRACK')
     def wildcard(self, p):
-        return tree.Wildcard(p.IDENT)
+        result = tree.Wildcard(p.IDENT)
+        result.context = self.context
+        return result
 
     @_('IDENT ARG_ASSIGN expr')
     def wc_arg(self, p):
@@ -136,44 +156,59 @@ class Parser(sly.Parser):
 
     @_("LBRACK IDENT ARG_SEP wc_args RBRACK")
     def wildcard(self, p):
-        return tree.Wildcard(p.IDENT, **p.wc_args)
+        result = tree.Wildcard(p.IDENT, **p.wc_args)
+        result.context = self.context
+        return result
 
     @_('IDENT exprblock %prec IMPMUL')
     def expr(self, p):
-        return tree.FunctionApplication(p.IDENT, p.exprblock)
+        result = tree.FunctionApplication(p.IDENT, p.exprblock)
+        result.context = self.context
+        return result
 
     @_('exprblock exprblock %prec IMPMUL')
     def expr(self, p):
-        return p.exprblock0 * p.exprblock1
+        result = p.exprblock0 * p.exprblock1
+        result.context = self.context
+        return result
 
     @_('number ident %prec IMPMUL')
     def expr(self, p):
-        return p.number * p.ident
+        result = p.number * p.ident
+        result.context = self.context
+        return result
 
     @_('number wildcard %prec IMPMUL')
     def expr(self, p):
-        return p.number * p.wildcard
+        result = p.number * p.wildcard
+        result.context = self.context
+        return result
 
     @_('number exprblock %prec IMPMUL')
     def expr(self, p):
-        return p.number * p.exprblock
+        result = p.number * p.exprblock
+        result.context = self.context
+        return result
 
     @_('LPAREN expr RPAREN')
     def exprblock(self, p):
         return p.expr
 
 _lexer = Lexer()
-_parser = Parser()
 
 
-def parse(data: str | Real) -> Optional[tree.Node]:
+def parse(data: str | Real, context: tree.Context = None) -> Optional[tree.Node]:
     if isinstance(data, Real):
-        return tree.Value(float(data))
+        result = tree.Value(float(data))
+        result.context = context
+        return result
 
     if not data:
         return None
 
-    result = _parser.parse(_lexer.tokenize(data))
+    parser = Parser(context)
+
+    result = parser.parse(_lexer.tokenize(data))
 
     if not isinstance(result, tree.Node):
         raise ParsingError(f"parser returned {repr(result)} of type {type(result).__name__}, expected type Node")

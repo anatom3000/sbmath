@@ -5,7 +5,7 @@ from numbers import Real
 
 import sly
 
-from . import tree
+from sbmath import tree
 
 
 # noinspection PyUnboundLocalVariable,PyUnresolvedReferences

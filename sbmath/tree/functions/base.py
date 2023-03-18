@@ -4,9 +4,9 @@ import copy
 from abc import ABC, abstractmethod
 from typing import Optional
 
-from .base import Node, Variable, MatchResult, Value
-from .context import MissingContextError
-from .._utils import debug, inc_indent, dec_indent
+from sbmath.tree.base import Node, Variable, MatchResult, Value
+from sbmath.tree.context import MissingContextError
+from sbmath._utils import debug, inc_indent, dec_indent
 
 
 class Function(ABC):
@@ -44,7 +44,7 @@ class FunctionApplication(Node):
         if r is not None:
             return r
 
-        return self.change_argument(self.argument.reduce(depth-1))
+        return self.change_argument(self.argument.reduce(depth - 1))
 
     def is_evaluable(self) -> bool:
         try:
@@ -53,7 +53,9 @@ class FunctionApplication(Node):
             return False
 
     def __eq__(self, other: Node) -> bool:
-        return isinstance(other, FunctionApplication) and self._function == other._function and self.argument == self.argument
+        return isinstance(other, FunctionApplication) \
+           and self._function == other._function \
+           and self.argument == self.argument
 
     @property
     def function(self) -> Function:

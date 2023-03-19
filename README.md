@@ -30,6 +30,8 @@ $ pip install -r requirements.txt
 - [x] Functions (take AST as argument for advanced transformations e.g. derivative)
 - [x] Advanced wildcards (match only variables, values, etc.)
 - [ ] Variables constraints (type, range...)
+- [ ] Add test suite
+- [ ] Add documentation
 
 ### API Progress
 

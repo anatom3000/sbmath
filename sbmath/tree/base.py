@@ -860,6 +860,8 @@ class BinOp(Node, ABC):
             if reduced_right.evaluate() == self.identity.evaluate():
                 return reduced_left
 
+        return type(self)(reduced_left, reduced_right)
+
     def reduce_no_eval(self, depth=-1) -> Node:
         if depth == 0:
             return self
@@ -931,8 +933,8 @@ class BinOp(Node, ABC):
     def context(self, new: Optional[Context]):
         self._context = new
 
-        left.context = new
-        right.context = new
+        self.left.context = new
+        self.right.context = new
 
     def __init__(self, left: Node, right: Node):
         self.left = left

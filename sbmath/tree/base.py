@@ -521,7 +521,8 @@ class AdvancedBinOp(Node, ABC):
                 if len(matches) == 0:
                     return None
                 elif len(matches) == 1:
-                    r = self._remove_wildcard_match(value, index, matches[0], base_match_table, inverted_match_table, state,
+                    r = self._remove_wildcard_match(value, index, matches[0], base_match_table, inverted_match_table,
+                                                    state,
                                                     inverted=False)
                     if r is None:
                         return None
@@ -537,7 +538,8 @@ class AdvancedBinOp(Node, ABC):
                 if len(matches) == 0:
                     return None
                 elif len(matches) == 1:
-                    r = self._remove_wildcard_match(value, index, matches[0], base_match_table, inverted_match_table, state,
+                    r = self._remove_wildcard_match(value, index, matches[0], base_match_table, inverted_match_table,
+                                                    state,
                                                     inverted=True)
                     if r is None:
                         return None
@@ -591,7 +593,6 @@ class AdvancedBinOp(Node, ABC):
 
     def _match_wildcards(self, value: AdvancedBinOp, state: MatchResult) -> Optional[MatchResult]:
 
-        # TODO: add indices in match table to each values so that identical values don't overwrite each other
         r = self._build_match_tables(value, state)
         if r is None:
             debug(f"No match found, aborting...", flag='match_adv_wc')
@@ -629,7 +630,8 @@ class AdvancedBinOp(Node, ABC):
             debug(f"{inverted_match_table = }", flag='match_adv_wc')
             debug(f"{state = }", flag='match_adv_wc')
 
-            r = self._remove_wildcard_match(value, index, base_match_table.get_from_key((index, value))[0], base_match_table,
+            r = self._remove_wildcard_match(value, index, base_match_table.get_from_key((index, value))[0],
+                                            base_match_table,
                                             inverted_match_table, state, False)
             dec_indent()
             if r is None:
@@ -651,7 +653,8 @@ class AdvancedBinOp(Node, ABC):
             debug(f"{inverted_match_table = }", flag='match_adv_wc')
             debug(f"{state = }", flag='match_adv_wc')
             inc_indent()
-            r = self._remove_wildcard_match(value, index, inverted_match_table.get_from_key((index, value))[0], base_match_table,
+            r = self._remove_wildcard_match(value, index, inverted_match_table.get_from_key((index, value))[0],
+                                            base_match_table,
                                             inverted_match_table, state, True)
 
             dec_indent()
@@ -877,11 +880,32 @@ class BinOp(Node, ABC):
 
         return type(self)(reduced_left, reduced_right)
 
+    def _match_no_reduce(self, value: Node, state: MatchResult) -> Optional[MatchResult]:
+
+        if self.is_evaluable() and value.is_evaluable():
+            return state if reduced_self.evaluate() == reduced_value.evaluate() else None
+
+        if not isinstance(value, type(self)):
+            return None
+
+        left_match = self.left.matches(value.left, state)
+        if left_match is None:
+            return None
+
+        right_match = self.right.matches(value.right, left_match)
+
+        if right_match is None:
+            return None
+
+        return right_match
+
     def matches(self, value: Node, state: MatchResult = None) -> Optional[MatchResult]:
         if state is None:
             state = MatchResult()
 
-        # TODO: try matching without reducing first
+        new_state = self._match_no_reduce(value, copy.deepcopy(state))
+        if new_state is not None:
+            return new_state
 
         reduced_self = self.reduce()
         reduced_value = value.reduce()
@@ -889,22 +913,7 @@ class BinOp(Node, ABC):
         if not isinstance(reduced_self, type(self)):
             return reduced_self.matches(reduced_value, state)
 
-        if reduced_self.is_evaluable() and reduced_value.is_evaluable():
-            return state if reduced_self.evaluate() == reduced_value.evaluate() else None
-
-        if not isinstance(reduced_value, type(self)):
-            return None
-
-        left_match = reduced_self.left.matches(reduced_value.left, state)
-        if left_match is None:
-            return None
-
-        right_match = reduced_self.right.matches(reduced_value.right, left_match)
-
-        if right_match is None:
-            return None
-
-        return right_match
+        return reduced_self._match_no_reduce(reduced_value, state)
 
     # noinspection PyProtectedMember
     def _replace_identifiers(self, match_result: MatchResult) -> Node:

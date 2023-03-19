@@ -387,7 +387,7 @@ class AdvancedBinOp(Node, ABC):
 
         return new_state, remaining_pattern, remaining_value
 
-    def _remove_wildcard_match(self, value: Node, wildcard: Wildcard,
+    def _remove_wildcard_match(self, value: Node, value_index: int, wildcard: Wildcard,
                                base_match_table: _utils.BiMultiDict, inverted_match_table: _utils.BiMultiDict,
                                state: MatchResult, inverted: bool) \
             -> Optional[_utils.BiMultiDict, _utils.BiMultiDict, MatchResult]:
@@ -405,11 +405,11 @@ class AdvancedBinOp(Node, ABC):
         base_match_table = copy.deepcopy(base_match_table)
         inverted_match_table = copy.deepcopy(inverted_match_table)
 
-        base_similars = [similar for similar in base_match_table.get_from_value(wildcard)
-                         if len(list(base_match_table.get_from_key(similar))) == 1]
+        base_similars = [(index, similar) for index, similar in base_match_table.get_from_value(wildcard)
+                         if len(list(base_match_table.get_from_key((index, similar)))) == 1]
 
-        inverted_similars = [similar for similar in inverted_match_table.get_from_value(wildcard)
-                             if len(list(inverted_match_table.get_from_key(similar))) == 1]
+        inverted_similars = [(index, similar) for index, similar in inverted_match_table.get_from_value(wildcard)
+                             if len(list(inverted_match_table.get_from_key((index, similar)))) == 1]
 
         # debug(f"Similars:", flag='match_adv_wc')
         # inc_indent()
@@ -435,9 +435,9 @@ class AdvancedBinOp(Node, ABC):
             debug(f"1) {state = }", flag='match_adv_wc')
 
             if inverted:
-                inverted_match_table.remove_key(value)
+                inverted_match_table.remove_key((value_index, value))
             else:
-                base_match_table.remove_key(value)
+                base_match_table.remove_key((value_index, value))
 
             debug(f"2) {state = }", flag='match_adv_wc')
 
@@ -452,7 +452,7 @@ class AdvancedBinOp(Node, ABC):
             debug(f"[B]", flag='match_adv_wc')
 
             debug(f"0) {state = }", flag='match_adv_wc')
-            state = wildcard.matches(base_similars[0], state)
+            state = wildcard.matches(base_similars[0][1], state)
             if state is None:
                 return None
 
@@ -469,7 +469,7 @@ class AdvancedBinOp(Node, ABC):
             debug(f"[C]", flag='match_adv_wc')
             debug(f"0) {state = }", flag='match_adv_wc')
 
-            state = wildcard.matches(inverted_similars[0], state)
+            state = wildcard.matches(inverted_similars[0][1], state)
             if state is None:
                 return None
 
@@ -483,9 +483,9 @@ class AdvancedBinOp(Node, ABC):
             return base_match_table, inverted_match_table, state
 
         if not inverted:
-            combined_values = type(self)(base_similars, inverted_similars)
+            combined_values = type(self)((v for _, v in base_similars), (v for _, v in inverted_similars))
         else:
-            combined_values = type(self)(inverted_similars, base_similars)
+            combined_values = type(self)((v for _, v in inverted_similars), (v for _, v in base_similars))
 
         debug(f"{combined_values = }", flag='match_adv_wc')
         debug(f"0) {state = }", flag='match_adv_wc')
@@ -512,32 +512,32 @@ class AdvancedBinOp(Node, ABC):
         inverted_match_table = copy.deepcopy(inverted_match_table)
 
         while any(len(base_match_table.get_from_key(k)) < 2 for k in base_match_table.keys()):
-            for value in list(base_match_table.keys()):
+            for index, value in list(base_match_table.keys()):
                 if value not in base_match_table.keys():
                     continue
 
-                matches = list(base_match_table.get_from_key(value))
+                matches = list(base_match_table.get_from_key((index, value)))
 
                 if len(matches) == 0:
                     return None
                 elif len(matches) == 1:
-                    r = self._remove_wildcard_match(value, matches[0], base_match_table, inverted_match_table, state,
+                    r = self._remove_wildcard_match(value, index, matches[0], base_match_table, inverted_match_table, state,
                                                     inverted=False)
                     if r is None:
                         return None
                     base_match_table, inverted_match_table, state = r
 
         while any(len(inverted_match_table.get_from_key(k)) < 2 for k in inverted_match_table.keys()):
-            for value in list(inverted_match_table.keys()):
+            for index, value in list(inverted_match_table.keys()):
                 if value not in inverted_match_table.keys():
                     continue
 
-                matches = list(inverted_match_table.get_from_key(value))
+                matches = list(inverted_match_table.get_from_key((index, value)))
 
                 if len(matches) == 0:
                     return None
                 elif len(matches) == 1:
-                    r = self._remove_wildcard_match(value, matches[0], base_match_table, inverted_match_table, state,
+                    r = self._remove_wildcard_match(value, index, matches[0], base_match_table, inverted_match_table, state,
                                                     inverted=True)
                     if r is None:
                         return None
@@ -548,13 +548,13 @@ class AdvancedBinOp(Node, ABC):
     def _build_match_tables(self, value: AdvancedBinOp, state: MatchResult) \
             -> Optional[tuple[_utils.BiMultiDict, _utils.BiMultiDict]]:
         base_match_table = _utils.BiMultiDict()
-        for val in value.base_values:
+        for index, val in enumerate(value.base_values):
             found_one = False
             for wildcard in self.base_values:
                 r = wildcard.matches(val, copy.deepcopy(state))
                 if r:
                     found_one = True
-                    base_match_table.add(val, wildcard)
+                    base_match_table.add((index, val), wildcard)
 
             if not found_one:
                 for wildcard in self.inverted_values:
@@ -562,19 +562,19 @@ class AdvancedBinOp(Node, ABC):
                     r = wildcard.matches(invval, copy.deepcopy(state))
                     if r:
                         found_one = True
-                        base_match_table.add(invval, wildcard)
+                        base_match_table.add((-index, invval), wildcard)
 
             if not found_one:
                 return None
 
         inverted_match_table = _utils.BiMultiDict()
-        for val in value.inverted_values:
+        for index, val in enumerate(value.inverted_values):
             found_one = False
             for wildcard in self.inverted_values:
                 r = wildcard.matches(val, copy.deepcopy(state))
                 if r:
                     found_one = True
-                    inverted_match_table.add(val, wildcard)
+                    inverted_match_table.add((index, val), wildcard)
 
             if not found_one:
                 for wildcard in self.base_values:
@@ -582,7 +582,7 @@ class AdvancedBinOp(Node, ABC):
                     r = wildcard.matches(invval, copy.deepcopy(state))
                     if r:
                         found_one = True
-                        inverted_match_table.add(invval, wildcard)
+                        inverted_match_table.add((-index, invval), wildcard)
 
             if not found_one:
                 return None
@@ -616,20 +616,20 @@ class AdvancedBinOp(Node, ABC):
 
         debug(f"Starting to match base values", flag='match_adv_wc')
         inc_indent()
-        for value in list(base_match_table.keys()):
-            if value not in list(base_match_table.keys()):
+        for index, value in list(base_match_table.keys()):
+            if value not in (v for _, v in base_match_table.keys()):
                 debug(f"{value} was not found in {base_match_table = }, skipping...", flag='match_adv_wc')
                 continue
 
             debug(f"====", flag='match_adv_wc')
             debug(f"attempting removal of wildcard match {value=} ", flag='match_adv_wc')
             inc_indent()
-            debug(f"{base_match_table.get_from_key(value)[0] = }", flag='match_adv_wc')
+            debug(f"{base_match_table.get_from_key((index, value))[0] = }", flag='match_adv_wc')
             debug(f"{base_match_table = }", flag='match_adv_wc')
             debug(f"{inverted_match_table = }", flag='match_adv_wc')
             debug(f"{state = }", flag='match_adv_wc')
 
-            r = self._remove_wildcard_match(value, base_match_table.get_from_key(value)[0], base_match_table,
+            r = self._remove_wildcard_match(value, index, base_match_table.get_from_key((index, value))[0], base_match_table,
                                             inverted_match_table, state, False)
             dec_indent()
             if r is None:
@@ -640,18 +640,18 @@ class AdvancedBinOp(Node, ABC):
 
         debug(f"Starting to match inverted values", flag='match_adv_wc')
         inc_indent()
-        for value in list(inverted_match_table.keys()):
-            if value not in list(inverted_match_table.keys()):
+        for index, value in list(inverted_match_table.keys()):
+            if value not in (v for _, v in base_match_table.keys()):
                 debug(f"{value} was not found in {inverted_match_table = }, skipping...", flag='match_adv_wc')
                 continue
             debug(f"attempting removal of wildcard match {value=} ", flag='match_adv_wc')
             inc_indent()
-            debug(f"{inverted_match_table.get_from_key(value)[0] = }", flag='match_adv_wc')
+            debug(f"{inverted_match_table.get_from_key((index, value))[0] = }", flag='match_adv_wc')
             debug(f"{base_match_table = }", flag='match_adv_wc')
             debug(f"{inverted_match_table = }", flag='match_adv_wc')
             debug(f"{state = }", flag='match_adv_wc')
             inc_indent()
-            r = self._remove_wildcard_match(value, inverted_match_table.get_from_key(value)[0], base_match_table,
+            r = self._remove_wildcard_match(value, index, inverted_match_table.get_from_key((index, value))[0], base_match_table,
                                             inverted_match_table, state, True)
 
             dec_indent()
@@ -961,9 +961,6 @@ class Value(Leaf):
     def __neg__(self):
         return Value(-self.data)
 
-    def __hash__(self):
-        return hash(self.uuid)  # can't use id(self) since id changes when copying
-
     def __str__(self):
         if self.data % 1 == 0:
             return str(int(self.data))
@@ -978,10 +975,6 @@ class Value(Leaf):
 
     def approximate(self) -> float:
         return self.data
-
-    def __init__(self, data):
-        super().__init__(data)
-        self.uuid = uuid.uuid1()
 
 
 class Variable(Leaf):

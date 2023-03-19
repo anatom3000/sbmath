@@ -170,5 +170,4 @@ def funcs():
     print(e.approximate())
 
 if __name__ == '__main__':
-    # TODO: implement a context system (to store functions, variables, etc.)
     repl()

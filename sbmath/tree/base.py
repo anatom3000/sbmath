@@ -15,10 +15,11 @@ from numbers import Real
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 
-from .. import _utils
+from sbmath.tree.context import MissingContextError
+from sbmath import _utils
 
 # debug functions
-from .._utils import debug, inc_indent, dec_indent
+from sbmath._utils import debug, inc_indent, dec_indent
 
 
 class Node(ABC):
@@ -989,13 +990,19 @@ class Value(Leaf):
 class Variable(Leaf):
 
     def is_evaluable(self) -> bool:
-        return False
+        return self.context is not None and self.data in self.context.functions.keys()
 
     def evaluate(self) -> Node:
-        raise TypeError("can't evaluate a variable")
+        if self.context is None:
+            raise MissingContextError(f"can't evaluate variable '{self.data}' without context")
+
+        if self.data not in self.context.variables.keys():
+            raise MissingContextError(f"context exists but variable '{self.data}' is undefined")
+
+        return self.context.variables[self.data].evaluate()
 
     def approximate(self) -> float:
-        raise TypeError("can't approximate a variable")
+        return self.evaluate().approximate()
 
 
 class Wildcard(Node):

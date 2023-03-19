@@ -110,8 +110,10 @@ class FunctionApplication(Node):
         if isinstance(self._function, str):
             if self.context is None:
                 raise MissingContextError(f"could not get function '{self._function}' without context")
+            elif self._function not in self.context.functions:
+                raise MissingContextError(f"context exists but function '{self._function}' is undefined")
             else:
-                return self.context.get_function(self._function)
+                return self.context.functions[self._function]
 
         return self._function
 

@@ -4,7 +4,7 @@ from collections.abc import Hashable, Iterable
 from typing import TypeVar
 
 
-DEBUG = True
+DEBUG = False
 DEBUG_FLAGS = (
     "repl",
     "match",

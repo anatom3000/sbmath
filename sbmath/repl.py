@@ -5,7 +5,7 @@ import traceback
 
 from sbmath import _utils
 from sbmath import parser
-from sbmath.tree import Context, NodeFunction
+from sbmath.tree import Context, NodeFunction, Value
 
 from sbmath._utils import debug
 
@@ -29,9 +29,11 @@ histfile = '.sbmath_history'
 
 def get_test_context() -> Context:
     f = NodeFunction("f", parser.parse("x"), parser.parse("2x+1"))
+    pi = Value(3.14)
 
     context = Context()
-    context.register_function(f)
+    context.add_function(f)
+    context.add_variable("pi", pi)
 
     return context
 

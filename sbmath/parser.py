@@ -194,10 +194,19 @@ class Parser(sly.Parser):
     def exprblock(self, p):
         return p.expr
 
+
 _lexer = Lexer()
 
+# sentinel value when the user does not provides a context to the parser
+# we cannot use None since it can be passed to mean no context
+ContextNotGiven = object()
+_DEFAULT_CONTEXT = None  # is changed at runtime by `sbmath.tree.context.std` to prevent circular imports
 
-def parse(data: str | Real, context: tree.Context = None) -> Optional[tree.Node]:
+
+def parse(data: str | Real, context: Optional[tree.Context] = ContextNotGiven) -> Optional[tree.Node]:
+    if context == ContextNotGiven:
+        context = _DEFAULT_CONTEXT
+
     if isinstance(data, Real):
         result = tree.Value(float(data))
         result.context = context

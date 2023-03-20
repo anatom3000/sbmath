@@ -27,11 +27,11 @@ class Function(ABC):
 
 class PythonFunction(Function):
 
-    def reduce_func(self, argument: Node, _depth: int) -> Optional[Node]:
+    def reduce_func(self, argument: Node, depth: int) -> Optional[Node]:
         for pattern, image in self.special_values.items():
             new = argument.morph(pattern, image)
             if new is not None:
-                return new.reduce(-1)
+                return new.reduce(depth-1)
 
         return None
 
@@ -88,9 +88,12 @@ class FunctionApplication(Node):
         if self.is_evaluable():
             return self.evaluate()
 
-        r = self.function.reduce_func(self.argument, depth)
-        if r is not None:
-            return r
+        try:
+            r = self.function.reduce_func(self.argument, depth)
+            if r is not None:
+                return r
+        except MissingContextError:
+            pass
 
         return self.change_argument(self.argument.reduce(depth - 1))
 
@@ -110,7 +113,8 @@ class FunctionApplication(Node):
         if isinstance(self._function, str):
             if self.context is None:
                 raise MissingContextError(f"could not get function '{self._function}' without context")
-            elif self._function not in self.context.functions:
+            # print(self.context.__dict__)
+            elif self._function not in self.context.functions.keys():
                 raise MissingContextError(f"context exists but function '{self._function}' is undefined")
             else:
                 return self.context.functions[self._function]
@@ -154,17 +158,17 @@ class FunctionApplication(Node):
         reduced_self = self.reduce()
         reduced_value = value.reduce()
 
-        if not isinstance(reduced_self, BaseFunctionNode):
+        if not isinstance(reduced_self, FunctionApplication):
             return reduced_self.matches(reduced_value, state)
 
         # noinspection PyProtectedMember
         return reduced_self._match_no_reduce(reduced_value, state)
 
     def __str__(self):
-        try:
-            func_name = self.function.name
-        except MissingContextError:
+        if isinstance(self._function, str):
             func_name = self._function
+        else:
+            func_name = self._function.name
 
         return f"{func_name}({self.argument})"
 

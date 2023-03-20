@@ -3,8 +3,8 @@ import re
 import readline
 import traceback
 
-from sbmath import _utils
-from sbmath import parser
+import sbmath
+from sbmath import _utils, parser, std
 from sbmath.tree import Context, NodeFunction, Value
 
 from sbmath._utils import debug
@@ -16,8 +16,19 @@ LIGHT_GRAY = "\033[0;37m"
 CYAN = "\033[0;36m"
 END = "\033[0m"
 
-operations = ['eq', 'approx', 'eval', 'reduce', 'reduce_no_eval', 'match', 'replace', 'morph', 'contains', 'debug',
-              'exit']
+operations = [
+    'eq',
+    'approx',
+    'eval',
+    'reduce',
+    'reduce_no_eval',
+    'match',
+    'replace',
+    'morph',
+    'contains',
+    'debug',
+    'exit'
+]
 
 start_text = f"""{CYAN}Interactive shell (alpha){END}
 {CYAN}Available operations:{END}{LIGHT_GREEN} {', '.join(map(repr, operations))}{END}"""
@@ -29,11 +40,9 @@ histfile = '.sbmath_history'
 
 def get_test_context() -> Context:
     f = NodeFunction("f", parser.parse("x"), parser.parse("2x+1"))
-    pi = Value(3.14)
 
-    context = Context()
+    context = sbmath.std()
     context.add_function(f)
-    context.add_variable("pi", pi)
 
     return context
 
@@ -101,14 +110,14 @@ def repl():
                 try:
                     expr1 = parse(input(f'{LIGHT_GRAY}Expr 1: {END}'))
                     debug(f" => {expr1}", flag='repl')
-                except EOFError:
+                except (EOFError, KeyboardInterrupt):
                     break
                 if expr1 is None:
                     continue
                 try:
                     expr2 = parse(input(f'{LIGHT_GRAY}Expr 2: {END}'))
                     debug(f" => {expr2}", flag='repl')
-                except EOFError:
+                except (EOFError, KeyboardInterrupt):
                     break
                 if expr2 is None:
                     continue
@@ -118,7 +127,7 @@ def repl():
                 try:
                     expr = parse(input(f"{LIGHT_GRAY}Expr: {END}"))
                     debug(f" => {expr}", flag='repl')
-                except EOFError:
+                except (EOFError, KeyboardInterrupt):
                     break
                 if expr is None:
                     continue
@@ -128,7 +137,7 @@ def repl():
                 try:
                     expr = parse(input(f"{LIGHT_GRAY}Expr: {END}"))
                     debug(f" => {expr}", flag='repl')
-                except EOFError:
+                except (EOFError, KeyboardInterrupt):
                     break
                 if expr is None:
                     continue
@@ -140,7 +149,7 @@ def repl():
                     debug(f" => {expr}", flag='repl')
 
                     depth = input(f"{LIGHT_GRAY}Depth (leave blank for no limit): {END}")
-                except EOFError:
+                except (EOFError, KeyboardInterrupt):
                     break
                 if expr is None:
                     continue
@@ -159,7 +168,7 @@ def repl():
                 try:
                     expr = parse(input(f"{LIGHT_GRAY}Expr: {END}"))
                     debug(f" => {expr}", flag='repl')
-                except EOFError:
+                except (EOFError, KeyboardInterrupt):
                     break
                 if expr is None:
                     continue
@@ -169,14 +178,14 @@ def repl():
                 try:
                     pat = parse(input(f"{LIGHT_GRAY}Pattern: {END}"))
                     debug(f" => {pat}", flag='repl')
-                except EOFError:
+                except (EOFError, KeyboardInterrupt):
                     break
                 if pat is None:
                     continue
                 try:
                     expr = parse(input(f"{LIGHT_GRAY}Expr: {END}"))
                     debug(f" => {expr}", flag='repl')
-                except EOFError:
+                except (EOFError, KeyboardInterrupt):
                     break
                 if expr is None:
                     continue
@@ -186,21 +195,21 @@ def repl():
                 try:
                     old = parse(input(f"{LIGHT_GRAY}Old node: {END}"))
                     debug(f" => {old}", flag='repl')
-                except EOFError:
+                except (EOFError, KeyboardInterrupt):
                     break
                 if old is None:
                     continue
                 try:
                     new = parse(input(f"{LIGHT_GRAY}New node: {END}"))
                     debug(f" => {new}", flag='repl')
-                except EOFError:
+                except (EOFError, KeyboardInterrupt):
                     break
                 if new is None:
                     continue
                 try:
                     expr = parse(input(f"{LIGHT_GRAY}Expr: {END}"))
                     debug(f" => {expr}", flag='repl')
-                except EOFError:
+                except (EOFError, KeyboardInterrupt):
                     break
                 if expr is None:
                     continue
@@ -210,21 +219,21 @@ def repl():
                 try:
                     pat_old = parse(input(f"{LIGHT_GRAY}Old pattern: {END}"))
                     debug(f" => {pat_old}", flag='repl')
-                except EOFError:
+                except (EOFError, KeyboardInterrupt):
                     break
                 if pat_old is None:
                     continue
                 try:
                     pat_new = parse(input(f"{LIGHT_GRAY}New pattern: {END}"))
                     debug(f" => {pat_new}", flag='repl')
-                except EOFError:
+                except (EOFError, KeyboardInterrupt):
                     break
                 if pat_new is None:
                     continue
                 try:
                     expr = parse(input(f"{LIGHT_GRAY}Expr: {END}"))
                     debug(f" => {expr}", flag='repl')
-                except EOFError:
+                except (EOFError, KeyboardInterrupt):
                     break
                 if expr is None:
                     continue
@@ -234,14 +243,14 @@ def repl():
                 try:
                     expr = parse(input(f"{LIGHT_GRAY}Expr: {END}"))
                     debug(f" => {expr}", flag='repl')
-                except EOFError:
+                except (EOFError, KeyboardInterrupt):
                     break
                 if expr is None:
                     continue
                 try:
                     pat = parse(input(f"{LIGHT_GRAY}Pattern: {END}"))
                     debug(f" => {pat}", flag='repl')
-                except EOFError:
+                except (EOFError, KeyboardInterrupt):
                     break
                 if pat is None:
                     continue
@@ -258,9 +267,12 @@ def repl():
             else:
                 raise RuntimeError("operation not properly handled")
 
-        except Exception:
+        except Exception as exc:
             print(f"{RED}An error occured during execution of operation:")
-            debug(f"{traceback.format_exc()}{END}", flag='repl')
+            if _utils.DEBUG and 'repl' in _utils.DEBUG_FLAGS:
+                debug(f"{traceback.format_exc()}{END}", flag='repl')
+            else:
+                print(f"{exc.__class__.__name__}: {exc}{END}")
 
             continue
 

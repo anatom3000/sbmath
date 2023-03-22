@@ -44,7 +44,7 @@ def diff(expression: Node | Function, variable: Variable) -> Node:
         u = m.wildcards["u"]
         v = m.wildcards["v"]
         # quotient rule
-        return ((diff(u, variable) * v - u * diff(v, variable)) / (v**2)).reduce()
+        return ((diff(u, variable) * v - u * diff(v, variable)) / (v ** 2)).reduce()
 
     m = (Wildcard("u") ** Wildcard("k", constant_with=variable)).matches(expression)
     if m:

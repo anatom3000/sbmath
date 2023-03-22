@@ -200,7 +200,6 @@ class Parser(sly.Parser):
         return result
 
 
-
 _lexer = Lexer()
 
 # sentinel value to indicate the user did not provide a context to the parser

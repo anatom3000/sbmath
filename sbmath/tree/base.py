@@ -44,7 +44,9 @@ class Node(ABC):
 
     def __radd__(self, other) -> Node:
         if isinstance(other, Real):
-            return AddAndSub.add(Value(float(other)), self)
+            result = AddAndSub.add(Value(float(other)), self)
+            result.context = self.context
+            return result
         elif isinstance(other, Node):
             result = AddAndSub.add(other, self)
             result.context = other.context
@@ -54,7 +56,9 @@ class Node(ABC):
 
     def __sub__(self, other) -> Node:
         if isinstance(other, Real):
-            return AddAndSub.sub(self, Value(float(other)))
+            result = AddAndSub.sub(self, Value(float(other)))
+            result.context = self.context
+            return result
         elif isinstance(other, Node):
             result = AddAndSub.sub(self, other)
             result.context = self.context
@@ -64,7 +68,9 @@ class Node(ABC):
 
     def __rsub__(self, other) -> Node:
         if isinstance(other, Real):
-            return AddAndSub.sub(Value(float(other)), self)
+            result = AddAndSub.sub(Value(float(other)), self)
+            result.context = self.context
+            return result
         elif isinstance(other, Node):
             result = AddAndSub.sub(other, self)
             result.context = other.context
@@ -74,7 +80,9 @@ class Node(ABC):
 
     def __mul__(self, other) -> Node:
         if isinstance(other, Real):
-            return MulAndDiv.mul(self, Value(float(other)))
+            result = MulAndDiv.mul(self, Value(float(other)))
+            result.context = self.context
+            return result
         elif isinstance(other, Node):
             result = MulAndDiv.mul(self, other)
             result.context = self.context
@@ -84,7 +92,9 @@ class Node(ABC):
 
     def __rmul__(self, other) -> Node:
         if isinstance(other, Real):
-            return MulAndDiv.mul(Value(float(other)), self)
+            result = MulAndDiv.mul(Value(float(other)), self)
+            result.context = self.context
+            return result
         elif isinstance(other, Node):
             result = MulAndDiv.mul(other, self)
             result.context = other.context
@@ -94,7 +104,9 @@ class Node(ABC):
 
     def __truediv__(self, other) -> Node:
         if isinstance(other, Real):
-            return MulAndDiv.div(self, Value(float(other)))
+            result = MulAndDiv.div(self, Value(float(other)))
+            result.context = self.context
+            return result
         elif isinstance(other, Node):
             result = MulAndDiv.div(self, other)
             result.context = self.context
@@ -104,7 +116,9 @@ class Node(ABC):
 
     def __rtruediv__(self, other) -> Node:
         if isinstance(other, Real):
-            return MulAndDiv.div(Value(float(other)), self)
+            result = MulAndDiv.div(Value(float(other)), self)
+            result.context = self.context
+            return result
         elif isinstance(other, Node):
             result = MulAndDiv.div(other, self)
             result.context = other.context
@@ -114,7 +128,9 @@ class Node(ABC):
 
     def __pow__(self, other) -> Node:
         if isinstance(other, Real):
-            return Pow(self, Value(float(other)))
+            result = Pow(self, Value(float(other)))
+            result.context = self.context
+            return result
         elif isinstance(other, Node):
             result = Pow(self, other)
             result.context = self.context
@@ -124,7 +140,9 @@ class Node(ABC):
 
     def __rpow__(self, other) -> Node:
         if isinstance(other, Real):
-            return Pow(Value(float(other)), self)
+            result = Pow(Value(float(other)), self)
+            result.context = self.context
+            return result
         elif isinstance(other, Node):
             result = Pow(other, self)
             result.context = other.context
@@ -192,9 +210,6 @@ class Node(ABC):
     @abstractmethod
     def contains(self, pattern: Node) -> bool:
         pass
-
-    def __contains__(self, item):
-        return self.contains(item)
 
 
 class Leaf(Node, ABC):
@@ -1171,41 +1186,51 @@ class AddAndSub(AdvancedBinOp):
         return result
 
     def __neg__(self):
-        return AddAndSub(self.inverted_values, self.base_values)
+        result = AddAndSub(self.inverted_values, self.base_values)
+        result.context = self.context
+        return result
 
     def __add__(self, other):
         if isinstance(other, Real):
-            return AddAndSub(self.base_values + [Value(other)], self.inverted_values)
+            result = AddAndSub(self.base_values + [Value(other)], self.inverted_values)
         elif isinstance(other, Node):
-            return AddAndSub(self.base_values + [other], self.inverted_values)
+            result = AddAndSub(self.base_values + [other], self.inverted_values)
         else:
             return NotImplemented
+        result.context = self.context
+        return result
 
     def __radd__(self, other):
         if isinstance(other, Real):
             # noinspection PyTypeChecker
-            return AddAndSub([Value(other)] + self.base_values, self.inverted_values)
+            result = AddAndSub([Value(other)] + self.base_values, self.inverted_values)
         elif isinstance(other, Node):
-            return AddAndSub([other] + self.base_values, self.inverted_values)
+            result = AddAndSub([other] + self.base_values, self.inverted_values)
         else:
             return NotImplemented
+        result.context = self.context
+        return result
 
     def __sub__(self, other):
         if isinstance(other, Real):
-            return AddAndSub(self.base_values, self.inverted_values + [Value(other)])
+            result = AddAndSub(self.base_values, self.inverted_values + [Value(other)])
         elif isinstance(other, Node):
-            return AddAndSub(self.base_values, self.inverted_values + [other])
+            result = AddAndSub(self.base_values, self.inverted_values + [other])
         else:
             return NotImplemented
+        result.context = self.context
+        return result
 
     def __rsub__(self, other):
         if isinstance(other, Real):
             # noinspection PyTypeChecker
-            return AddAndSub([Value(other)] + self.inverted_values, self.base_values)
+            result = AddAndSub([Value(other)] + self.inverted_values, self.base_values)
         elif isinstance(other, Node):
-            return AddAndSub([other] + self.inverted_values, self.base_values)
+            result = AddAndSub([other] + self.inverted_values, self.base_values)
         else:
             return NotImplemented
+        result.context = self.context
+        return result
 
 
 class MulAndDiv(AdvancedBinOp):
@@ -1277,39 +1302,57 @@ class MulAndDiv(AdvancedBinOp):
         return result
 
     def __neg__(self):
-        return MulAndDiv(self.base_values + [Value(-1.0)], self.inverted_values)
+        result = MulAndDiv(self.base_values + [Value(-1.0)], self.inverted_values)
+        result.context = self.context
+        return result
 
     def __mul__(self, other):
         if isinstance(other, Real):
-            return MulAndDiv(self.base_values + [Value(other)], self.inverted_values)
+            result = MulAndDiv(self.base_values + [Value(other)], self.inverted_values)
+            result.context = self.context
+            return result
         elif isinstance(other, Node):
-            return MulAndDiv(self.base_values + [other], self.inverted_values)
+            result = MulAndDiv(self.base_values + [other], self.inverted_values)
+            result.context = self.context
+            return result
         else:
             return NotImplemented
 
     def __rmul__(self, other):
         if isinstance(other, Real):
             # noinspection PyTypeChecker
-            return MulAndDiv([Value(other)] + self.base_values, self.inverted_values)
+            result = MulAndDiv([Value(other)] + self.base_values, self.inverted_values)
+            result.context = self.context
+            return result
         elif isinstance(other, Node):
-            return MulAndDiv([other] + self.base_values, self.inverted_values)
+            result = MulAndDiv([other] + self.base_values, self.inverted_values)
+            result.context = self.context
+            return result
         else:
             return NotImplemented
 
     def __div__(self, other):
         if isinstance(other, Real):
-            return MulAndDiv(self.base_values, self.inverted_values + [Value(other)])
+            result = MulAndDiv(self.base_values, self.inverted_values + [Value(other)])
+            result.context = self.context
+            return result
         elif isinstance(other, Node):
-            return MulAndDiv(self.base_values, self.inverted_values + [other])
+            result = MulAndDiv(self.base_values, self.inverted_values + [other])
+            result.context = self.context
+            return result
         else:
             return NotImplemented
 
     def __rsub__(self, other):
         if isinstance(other, Real):
             # noinspection PyTypeChecker
-            return MulAndDiv([Value(other)] + self.inverted_values, self.base_values)
+            result = MulAndDiv([Value(other)] + self.inverted_values, self.base_values)
+            result.context = self.context
+            return result
         elif isinstance(other, Node):
-            return MulAndDiv([other] + self.inverted_values, self.base_values)
+            result = MulAndDiv([other] + self.inverted_values, self.base_values)
+            result.context = self.context
+            return result
         else:
             return NotImplemented
 

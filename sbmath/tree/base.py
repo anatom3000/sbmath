@@ -231,6 +231,7 @@ class Leaf(Node, ABC):
 class AdvancedBinOp(Node, ABC):
     base_operation_symbol: str
     inverse_operation_symbol: str
+    constant_term_last: bool
 
     identity: Node
     absorbing_element: Optional[Node] = None
@@ -325,7 +326,10 @@ class AdvancedBinOp(Node, ABC):
             non_eval_part.base_values += eval_result.base_values
             non_eval_part.inverted_values += eval_result.inverted_values
         else:
-            non_eval_part.base_values.append(eval_result)
+            if self.constant_term_last:
+                non_eval_part.base_values.append(eval_result)
+            else:
+                non_eval_part.base_values.insert(0, eval_result)
 
         return non_eval_part.reduce_no_eval(depth)
 
@@ -1104,8 +1108,8 @@ class Wildcard(Node):
 
 class AddAndSub(AdvancedBinOp):
     base_operation_symbol = '+'
-
     inverse_operation_symbol = '-'
+    constant_term_last = True
 
     identity = Value(0.0)
 
@@ -1207,6 +1211,7 @@ class AddAndSub(AdvancedBinOp):
 class MulAndDiv(AdvancedBinOp):
     base_operation_symbol = '*'
     inverse_operation_symbol = '/'
+    constant_term_last = False
 
     identity = Value(1.0)
     absorbing_element = Value(0.0)

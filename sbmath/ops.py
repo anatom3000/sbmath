@@ -50,7 +50,7 @@ def diff(expression: Node | Function, variable: Variable) -> Node:
     if m:
         u = m.wildcards["u"]
         k = m.wildcards["k"]
-        return ((k - 1) * (u ** k)).reduce()
+        return (k * (u ** (k - 1))).reduce()
 
     # TODO: functions with multiple parameters
     # TODO: function operating on raw nodes in expression tree

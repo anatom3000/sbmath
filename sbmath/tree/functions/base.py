@@ -12,6 +12,9 @@ from sbmath._utils import debug, inc_indent, dec_indent
 class Function(ABC):
     name: str
 
+    def __call__(self, argument: Node) -> FunctionApplication:
+        return FunctionApplication(self, argument)
+
     @abstractmethod
     def reduce_func(self, argument: Node, depth: int) -> Optional[Node]:
         pass
@@ -23,6 +26,12 @@ class Function(ABC):
     @abstractmethod
     def evaluate(self, argument: Node) -> Node:
         pass
+
+    @classmethod
+    def from_expression(cls, body: expression, parameter: Node) -> Function:
+        func_name = f"_anonymous_{hash((parameter, body))}"
+
+        return NodeFunction(func_name, parameter, body)
 
 
 class PythonFunction(Function):
@@ -48,12 +57,13 @@ class PythonFunction(Function):
 
         return Value(self.pyfunc(argument.approximate()))
 
-    def __init__(self, func: Callable[[float], float], special_values: dict[Node, Node] = None, name: str = None):
+    def __init__(self, func: Callable[[float], float], special_values: dict[Node, Node] = None, name: str = None, derivative: Optional[Function] = None):
         self.pyfunc = func
         if name is None:
             name = self.pyfunc.__name__
         self.name = name
         self.special_values = {} if special_values is None else special_values
+        self.derivative = derivative
 
 
 class NodeFunction(Function):

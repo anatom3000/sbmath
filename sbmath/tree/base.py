@@ -32,7 +32,9 @@ class Node(ABC):
 
     def __add__(self, other) -> Node:
         if isinstance(other, Real):
-            return AddAndSub.add(self, Value(float(other)))
+            other = Value(float(other))
+            other.context = self.context
+            return AddAndSub.add(self, context)
         elif isinstance(other, Node):
             result = AddAndSub.add(self, other)
             result.context = self.context
@@ -1025,6 +1027,14 @@ class Wildcard(Node):
             if self.constraints["eval"] == Value(0.0) and value.is_evaluable():
                 return False
 
+        if "constant_with" in self.constraints.keys():
+            if value.contains(self.constraints["constant_with"]):
+                return False
+
+        if "variable_with" in self.constraints.keys():
+            if not value.contains(self.constraints["constant_with"]):
+                return False
+
         return True
 
     def matches(self, value: Node, state: MatchResult = None) -> Optional[MatchResult]:
@@ -1045,7 +1055,7 @@ class Wildcard(Node):
 
     def _replace_identifiers(self, match_result: MatchResult) -> Node:
         if self.name not in match_result.wildcards:
-            raise ReplacingError(f"name '{self.name}' not found in ID mapping")
+            raise ReplacingError(f"name '{self.name}' not found in wildcard mapping")
 
         return match_result.wildcards[self.name]
 
@@ -1082,8 +1092,8 @@ class Wildcard(Node):
     def context(self, new: Optional[Context]):
         self._context = new
 
-        for c in self.constraints:
-            c.context = new
+        for c in self.constraints.keys():
+            self.constraints[c].context = new
 
     def __init__(self, name: str, **constraints: Node):
         self.name = name

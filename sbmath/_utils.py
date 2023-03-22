@@ -11,6 +11,7 @@ DEBUG_FLAGS = (
     # "match_adv_wc",
     # "match_wc",
     "reduce",
+    "diff",
     # "misc"
 )
 DEBUG_INDENT = 0

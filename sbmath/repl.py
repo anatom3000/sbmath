@@ -6,6 +6,7 @@ import traceback
 import sbmath
 from sbmath import _utils, parser, std
 from sbmath.tree import Context, NodeFunction, Value
+from sbmath.ops import diff
 
 from sbmath._utils import debug
 
@@ -26,6 +27,7 @@ operations = [
     'replace',
     'morph',
     'contains',
+    'diff',
     'debug',
     'exit'
 ]
@@ -255,6 +257,28 @@ def repl():
                 if pat is None:
                     continue
                 result = expr.contains(pat)
+
+            elif op == 'diff':
+                try:
+                    expr = parse(input(f"{LIGHT_GRAY}Expr: {END}"))
+                    debug(f" => {expr}", flag='repl')
+                except (EOFError, KeyboardInterrupt):
+                    break
+
+                try:
+                    var_str = input(f"{LIGHT_GRAY}Variable (leave blank for 'x'): {END}")
+                    if var_str:
+                        var = parse(var_str)
+                    else:
+                        var = parse("x")
+                    debug(f" => {var}", flag='repl')
+                except (EOFError, KeyboardInterrupt):
+                    break
+                if expr is None:
+                    continue
+                if var is None:
+                    continue
+                result = diff(expr, var)
 
             elif op == 'debug':
                 _utils.DEBUG = not _utils.DEBUG

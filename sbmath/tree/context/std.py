@@ -7,6 +7,7 @@ from sbmath.tree.functions import Function, PythonFunction
 from sbmath.parser import parse as _parse
 import sbmath.parser
 
+
 class FrozenContextError(Exception):
     pass
 
@@ -61,7 +62,7 @@ _std.add_function(
 
 _std.add_function(
     PythonFunction(math.log, {
-        parse(1): parse(0),
+        parse(1):   parse(0),
         parse("e"): parse(1),
         parse("exp([arg])"): parse("[arg]")
     }, "ln")
@@ -72,6 +73,8 @@ _std.add_function(
         parse("10^[arg]"): parse("[arg]")
     }, "log")
 )
+
+## OPERATIONS
 
 std = _StdFrozenContext("std", _std)
 del _std

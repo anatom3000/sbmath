@@ -18,6 +18,7 @@ CYAN = "\033[0;36m"
 END = "\033[0m"
 
 operations = [
+    'parse',
     'eq',
     'approx',
     'eval',
@@ -108,7 +109,17 @@ def repl():
             break
 
         try:
-            if op == 'eq':
+            if op == 'parse':
+                try:
+                    expr = parse(input(f'{LIGHT_GRAY}Expr: {END}'))
+                    debug(f" => {expr}", flag='repl')
+                except (EOFError, KeyboardInterrupt):
+                    break
+                if expr is None:
+                    continue
+                result = expr
+
+            elif op == 'eq':
                 try:
                     expr1 = parse(input(f'{LIGHT_GRAY}Expr 1: {END}'))
                     debug(f" => {expr1}", flag='repl')

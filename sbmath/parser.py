@@ -63,10 +63,9 @@ class Parser(sly.Parser):
 
     precedence = (
         ('left', PLUS, MINUS),
-        ('left', IMPMUL),
-        ('right', TIMES, DIVIDE),
+        ('right', TIMES, DIVIDE, IMPMUL),
+        ('right', UMINUS),
         ('right', POW),
-        ('left', UMINUS),
     )
 
     # Grammar rules and actions
@@ -91,12 +90,6 @@ class Parser(sly.Parser):
     @_('expr DIVIDE expr')
     def expr(self, p):
         result = p.expr0 / p.expr1
-        result.context = self.context
-        return result
-
-    @_('expr POW expr')
-    def expr(self, p):
-        result = p.expr0 ** p.expr1
         result.context = self.context
         return result
 
@@ -160,6 +153,12 @@ class Parser(sly.Parser):
         result.context = self.context
         return result
 
+    @_('number ident POW expr %prec POW')
+    def expr(self, p):
+        result = tree.MulAndDiv.mul(p.number, tree.Pow(p.ident, p.expr))
+        result.context = self.context
+        return result
+
     @_('IDENT exprblock %prec IMPMUL')
     def expr(self, p):
         result = tree.FunctionApplication(p.IDENT, p.exprblock)
@@ -194,10 +193,17 @@ class Parser(sly.Parser):
     def exprblock(self, p):
         return p.expr
 
+    @_('expr POW expr')
+    def expr(self, p):
+        result = p.expr0 ** p.expr1
+        result.context = self.context
+        return result
+
+
 
 _lexer = Lexer()
 
-# sentinel value when the user does not provides a context to the parser
+# sentinel value to indicate the user did not provide a context to the parser
 # we cannot use None since it can be passed to mean no context
 ContextNotGiven = object()
 _DEFAULT_CONTEXT = None  # is changed at runtime by `sbmath.tree.context.std` to prevent circular imports

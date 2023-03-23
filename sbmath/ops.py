@@ -30,15 +30,12 @@ def diff(expression: Node | Function, variable: Variable) -> Node:
         return (diff(m.wildcards["u"], variable) + diff(m.wildcards["v"], variable)).reduce()
 
     m = _prod_pat.matches(expression)
-    if m:
+    if m and not m.weak:
         u = m.wildcards["u"]
         v = m.wildcards["v"]
         # product rule
         return (diff(u, variable) * v + u * diff(v, variable)).reduce()
 
-    # TODO: weak/strong matches (to indicate another possible match)
-    #       for now this matching will never be tested
-    #       since if a division matches the product would have already matched prior to this point
     m = _div_pat.matches(expression)
     if m:
         u = m.wildcards["u"]

@@ -33,8 +33,8 @@ operations = [
     'exit'
 ]
 
-start_text = f"""{CYAN}Interactive shell (alpha){END}
-{CYAN}Available operations:{END}{LIGHT_GREEN} {', '.join(map(repr, operations))}{END}"""
+start_text = f"""{CYAN}Interactive shell (alpha){END}"""
+op_text = f"""{CYAN}Available operations:{END}{LIGHT_GREEN} {', '.join(map(repr, operations))}{END}"""
 
 BRACKETS = {'(': ')', '[': ']'}
 
@@ -80,13 +80,14 @@ def repl():
         readline.read_history_file(histfile)  # Load previous history
     except FileNotFoundError:
         pass
-    atexit.register(readline.write_history_file, histfile)  # Save new history*
+    atexit.register(readline.write_history_file, histfile)  # Save new history
 
     context = get_test_context()
 
     parse = lambda x: parser.parse(x, context=context)
 
     print(start_text)
+    print(op_text)
 
     while True:
         try:
@@ -99,9 +100,8 @@ def repl():
             continue
 
         if op not in operations:
-            print(f"{RED}Operation not found!{END}", end=' ')
-            print(f"{CYAN}Available operations:{END}{LIGHT_GREEN}", ', '.join(map(repr, operations[:-1])), 'and',
-                  repr(operations[-1]), END)
+            print(f"{RED}Operation not found!{END}")
+            print(op_text)
 
             continue
 

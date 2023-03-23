@@ -151,6 +151,7 @@ class Node(ABC):
             return NotImplemented
 
     def __str__(self) -> str:
+        # TODO: better string representation (compatible with parsing)
         return f"Node({self.__class__.__name__})"
 
     def __repr__(self) -> str:
@@ -377,6 +378,7 @@ class AdvancedBinOp(Node, ABC):
                     if match_result is not None:
                         new_state = match_result
                         found = True
+                        state.weak = True
                         break
                 if found:
                     del remaining_pattern.inverted_values[index]
@@ -401,6 +403,7 @@ class AdvancedBinOp(Node, ABC):
                     if match_result is not None:
                         new_state = match_result
                         found = True
+                        state.weak = True
                         break
                 if found:
                     del remaining_pattern.base_values[index]
@@ -534,8 +537,9 @@ class AdvancedBinOp(Node, ABC):
         inverted_match_table = copy.deepcopy(inverted_match_table)
 
         while any(len(base_match_table.get_from_key(k)) < 2 for k in base_match_table.keys()):
+            debug(f"{[(k, base_match_table.get_from_key(k)) for k in base_match_table.keys()] = }", flag='match_adv_wc')
             for index, value in list(base_match_table.keys()):
-                if value not in base_match_table.keys():
+                if (index, value) not in base_match_table.keys():
                     continue
 
                 matches = list(base_match_table.get_from_key((index, value)))
@@ -552,7 +556,7 @@ class AdvancedBinOp(Node, ABC):
 
         while any(len(inverted_match_table.get_from_key(k)) < 2 for k in inverted_match_table.keys()):
             for index, value in list(inverted_match_table.keys()):
-                if value not in inverted_match_table.keys():
+                if (index, value) not in inverted_match_table.keys():
                     continue
 
                 matches = list(inverted_match_table.get_from_key((index, value)))
@@ -586,6 +590,7 @@ class AdvancedBinOp(Node, ABC):
                     r = wildcard.matches(invval, copy.deepcopy(state))
                     if r:
                         found_one = True
+                        state.weak = True
                         base_match_table.add((-index, invval), wildcard)
 
             if not found_one:
@@ -606,6 +611,7 @@ class AdvancedBinOp(Node, ABC):
                     r = wildcard.matches(invval, copy.deepcopy(state))
                     if r:
                         found_one = True
+                        state.weak = True
                         inverted_match_table.add((-index, invval), wildcard)
 
             if not found_one:
@@ -641,7 +647,7 @@ class AdvancedBinOp(Node, ABC):
         inc_indent()
         for index, value in list(base_match_table.keys()):
             if value not in (v for _, v in base_match_table.keys()):
-                debug(f"{value} was not found in {base_match_table = }, skipping...", flag='match_adv_wc')
+                debug(f"{value} was not found in {list(v for _, v in base_match_table.keys()) = }, skipping...", flag='match_adv_wc')
                 continue
 
             debug(f"====", flag='match_adv_wc')
@@ -665,8 +671,8 @@ class AdvancedBinOp(Node, ABC):
         debug(f"Starting to match inverted values", flag='match_adv_wc')
         inc_indent()
         for index, value in list(inverted_match_table.keys()):
-            if value not in (v for _, v in base_match_table.keys()):
-                debug(f"{value} was not found in {inverted_match_table = }, skipping...", flag='match_adv_wc')
+            if value not in (v for _, v in inverted_match_table.keys()):
+                debug(f"{value} was not found in {list(v for _, v in inverted_match_table.keys()) = }, skipping...", flag='match_adv_wc')
                 continue
             debug(f"attempting removal of wildcard match {value=} ", flag='match_adv_wc')
             inc_indent()
@@ -714,7 +720,7 @@ class AdvancedBinOp(Node, ABC):
 
         state, remaining_pattern, remaining_value = no_wildcard_self._match_no_wildcards(value, state)
 
-        debug(f"Finished matching everything except wilcards:", flag='match')
+        debug(f"Finished matching everything except wildcards:", flag='match')
         inc_indent()
         debug(f"{state = }", flag='match')
         debug(f"{remaining_pattern = }", flag='match')
@@ -750,7 +756,7 @@ class AdvancedBinOp(Node, ABC):
 
         no_reduce_state = self._match_no_reduce(value, copy.deepcopy(state))
 
-        if no_reduce_state is not None:
+        if no_reduce_state is not None and not no_reduce_state.weak:
             dec_indent()
             return no_reduce_state
 
@@ -769,6 +775,9 @@ class AdvancedBinOp(Node, ABC):
             return m
 
         m = reduced_self._match_no_reduce(reduced_value, state)
+        if m is None and no_reduce_state:
+            return no_reduce_state
+
         dec_indent()
         return m
 
@@ -1369,6 +1378,7 @@ class Pow(BinOp):
 @dataclass
 class MatchResult:
     wildcards: dict[str, Node] = field(default_factory=dict)
+    weak: bool = False
 
 
 class ReplacingError(Exception):

@@ -29,7 +29,7 @@ $ pip install -r requirements.txt
 - [ ] Somewhat stable pattern matching
 - [x] Functions (take AST as argument for advanced transformations e.g. derivative)
 - [x] Advanced wildcards (match only variables, values, etc.)
-- [ ] Variables constraints (type, range...)
+- [ ] Variables constraints/domain (type, range...)
 - [ ] Add test suite
 - [ ] Add documentation
 

@@ -6,12 +6,12 @@ from typing import TypeVar
 
 DEBUG = False
 DEBUG_FLAGS = (
-    "repl",
-    "match",
+    # "repl",
+    # "match",
     # "match_adv_wc",
     # "match_wc",
     "reduce",
-    "diff",
+    # "diff",
     # "misc"
 )
 DEBUG_INDENT = 0

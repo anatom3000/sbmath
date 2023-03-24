@@ -156,18 +156,5 @@ def benchmark():
     print(timeit.timeit(stmt="pattern.matches(expr)", setup=setup, number=1000), 'ms')
 
 
-def funcs():
-    from sbmath.tree.functions import Sin
-
-    e = Sin(parse("3.1415*2"))
-    p = Sin(parse("[a]"))
-
-    print(e)
-    print(e.reduce())
-
-    print(p.matches(e))
-    print(e.evaluate())
-    print(e.approximate())
-
 if __name__ == '__main__':
     repl()

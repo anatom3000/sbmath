@@ -5,7 +5,7 @@ from numbers import Real
 
 import sly
 
-from sbmath import tree
+import sbmath.tree as tree
 
 
 # noinspection PyUnboundLocalVariable,PyUnresolvedReferences
@@ -162,6 +162,12 @@ class Parser(sly.Parser):
     @_('IDENT exprblock %prec IMPMUL')
     def expr(self, p):
         result = tree.FunctionApplication(p.IDENT, p.exprblock)
+        result.context = self.context
+        return result
+
+    @_('wildcard exprblock %prec IMPMUL')
+    def expr(self, p):
+        result = tree.FunctionWildcard.from_wildcard(p.wildcard, p.exprblock)
         result.context = self.context
         return result
 

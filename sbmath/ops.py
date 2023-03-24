@@ -10,7 +10,7 @@ _prod_pat: Node = parse("[u]*[v]")
 _div_pat: Node = parse("[u]/[v]")
 
 
-def diff(expression: Node | Function, variable: Variable) -> Node:
+def diff(expression: Node, variable: Variable) -> Node:
 
     m = Wildcard("_", constant_with=variable).matches(expression)
     if m:

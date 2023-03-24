@@ -1063,6 +1063,7 @@ class Wildcard(Node):
         return pattern.matches(self) is not None
 
     def _match_contraints(self, value: Node) -> bool:
+
         if "eval" in self.constraints.keys():
             if self.constraints["eval"] == Value(1.0) and not value.is_evaluable():
                 return False
@@ -1097,7 +1098,7 @@ class Wildcard(Node):
 
     def _replace_identifiers(self, match_result: MatchResult) -> Node:
         if self.name not in match_result.wildcards:
-            raise ReplacingError(f"name '{self.name}' not found in wildcard mapping")
+            return self
 
         return match_result.wildcards[self.name]
 
@@ -1108,10 +1109,10 @@ class Wildcard(Node):
         return False
 
     def evaluate(self) -> Node:
-        raise TypeError("can't evaluate a wildcard")
+        raise TypeError(f"can't evaluate {type(self)}")
 
     def approximate(self) -> float:
-        raise TypeError("can't approximate a wildcard")
+        raise TypeError(f"can't approximate {type(self)}")
 
     def reduce(self, depth=-1) -> Node:
         return self
@@ -1392,6 +1393,7 @@ class Pow(BinOp):
 @dataclass
 class MatchResult:
     wildcards: dict[str, Node] = field(default_factory=dict)
+    functions_wildcards: dict[str, Function] = field(default_factory=dict)
     weak: bool = False
 
 

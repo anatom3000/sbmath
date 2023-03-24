@@ -274,10 +274,24 @@ class AdvancedBinOp(Node, ABC):
         value_occurences = defaultdict(int)
 
         for value in self.base_values:
-            value_occurences[value.reduce(depth - 1)] += 1
+            reduced = value.reduce(depth - 1)
+            if isinstance(reduced, type(self)):
+                for v in reduced.base_values:
+                    value_occurences[v] += 1
+                for v in reduced.inverted_values:
+                    value_occurences[v] -= 1
+            else:
+                value_occurences[reduced] += 1
 
         for value in self.inverted_values:
-            value_occurences[value.reduce(depth - 1)] -= 1
+            reduced = value.reduce(depth - 1)
+            if isinstance(reduced, type(self)):
+                for v in reduced.base_values:
+                    value_occurences[v] -= 1
+                for v in reduced.inverted_values:
+                    value_occurences[v] += 1
+            else:
+                value_occurences[reduced] -= 1
 
         base_values = []
         inverted_values = []

@@ -11,11 +11,6 @@ _div_pat: Node = parse("[u]/[v]")
 
 
 def diff(expression: Node | Function, variable: Variable) -> Node:
-    if isinstance(expression, Function):
-        if isinstance(expression, NodeExpression):
-            return diff(expression(variable), variable).reduce()
-        if isinstance(expression, PythonFunction):
-            raise NotImplementedError("todo: derivative of functions (chain rule)")
 
     m = Wildcard("_", constant_with=variable).matches(expression)
     if m:

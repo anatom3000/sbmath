@@ -33,8 +33,14 @@ class Function(ABC):
 
         return NodeFunction(func_name, parameter, body)
 
+    @abstractmethod
+    def _derivative(self) -> Function:
+        pass
+
 
 class PythonFunction(Function):
+    def _derivative(self) -> Function:
+        return self._deriv
 
     def reduce_func(self, argument: Node, depth: int) -> Optional[Node]:
         for pattern, image in self.special_values.items():
@@ -63,10 +69,13 @@ class PythonFunction(Function):
             name = self.pyfunc.__name__
         self.name = name
         self.special_values = {} if special_values is None else special_values
-        self.derivative = derivative
+        self._deriv = derivative
+
 
 
 class NodeFunction(Function):
+    def _derivative(self):
+        raise TypeError("NodeFunction._derivative is not implemented. You might want to use `sbmath.ops.diff`.")
 
     def reduce_func(self, argument: Node, depth: int) -> Optional[Node]:
         return self.body.replace(self.parameter, argument.reduce(depth-1)).reduce(depth)
@@ -81,7 +90,6 @@ class NodeFunction(Function):
         self.name = name
         self.parameter = parameter
         self.body = body
-
 
 class FunctionApplication(Node):
 

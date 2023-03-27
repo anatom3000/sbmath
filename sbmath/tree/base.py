@@ -201,7 +201,7 @@ class Node(ABC):
     def _replace_in_children(self, old_pattern: Node, new_pattern: Node) -> Node:
         pass
 
-    def replace(self, old_pattern: Node, new_pattern: Node):
+    def replace(self, old_pattern: Node, new_pattern: Node) -> Node:
         m = old_pattern.matches(self)
         if m:
             new = new_pattern._replace_identifiers(m)

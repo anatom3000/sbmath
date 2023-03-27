@@ -6,7 +6,7 @@ import traceback
 import sbmath
 from sbmath import _utils, parser, std
 from sbmath.tree import Context, NodeFunction, Value
-from sbmath.ops import diff
+from sbmath.ops import diff, expand
 
 from sbmath._utils import debug
 
@@ -24,6 +24,7 @@ operations = [
     'eval',
     'reduce',
     'reduce_no_eval',
+    'expand',
     'match',
     'replace',
     'morph',
@@ -203,6 +204,17 @@ def repl():
                 if expr is None:
                     continue
                 result = pat.matches(expr)
+
+            elif op == 'expand':
+                try:
+                    expr = parse(input(f"{LIGHT_GRAY}Expr: {END}"))
+                    debug(f" => {expr}", flag='repl')
+                except (EOFError, KeyboardInterrupt):
+                    break
+                if expr is None:
+                    continue
+                result = expand(expr)
+
 
             elif op == 'replace':
                 try:

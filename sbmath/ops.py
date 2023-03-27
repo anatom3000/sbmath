@@ -87,5 +87,7 @@ _prod_sum_pat = parse("[k]*([a]+[b])")
 _sum_prod_pat = parse("[k]*[a]+[k]*[b]")
 
 
-def expand(expression: Node):
+def expand(expression: Node) -> Node:
+    # the pattern matching is powerful enough to support more complex expansions
+    # just by patt
     return expression.replace(_prod_sum_pat, _sum_prod_pat)

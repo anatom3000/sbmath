@@ -316,11 +316,7 @@ def repl():
 
         except Exception as exc:
             print(f"{RED}An error occured during execution of operation:")
-            if _utils.DEBUG and 'repl' in _utils.DEBUG_FLAGS:
-                debug(f"{traceback.format_exc()}{END}", flag='repl')
-            else:
-                print(f"{exc.__class__.__name__}: {exc}{END}")
-
+            print(f"{traceback.format_exc()}{END}")
             continue
 
         print(f" => {YELLOW}{result}{END}")

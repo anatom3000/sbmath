@@ -24,11 +24,15 @@ _derivatives: dict[Function, Function] = {
 def diff(expression: Node, variable: Variable) -> Node:
     m = Wildcard("_", constant_with=variable).matches(expression)
     if m:
-        return Value(0.0)
+        result = Value(0.0)
+        result.context = expression.context
+        return result
 
     m = variable.matches(expression)
     if m:
-        return Value(1.0)
+        result = Value(1.0)
+        result.context = expression.context
+        return result
 
     m = _sum_pat.matches(expression)
     if m:
@@ -61,7 +65,7 @@ def diff(expression: Node, variable: Variable) -> Node:
     #     k = m.wildcards["k"]
     #     return (k * (u ** (k - 1))).reduce()
 
-    m = (Wildcard("u") ** Wildcard("k")).matches(expression)
+    m = (Wildcard("u") ** Wildcard("v")).matches(expression)
     if m:
         u = m.wildcards["u"]
         v = m.wildcards["v"]

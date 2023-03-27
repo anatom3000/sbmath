@@ -197,10 +197,6 @@ class Node(ABC):
             return None
         return new
 
-    @abstractmethod
-    def _replace_in_children(self, old_pattern: Node, new_pattern: Node) -> Node:
-        pass
-
     def replace(self, old_pattern: Node, new_pattern: Node) -> Node:
         m = old_pattern.matches(self)
         if m:
@@ -209,6 +205,17 @@ class Node(ABC):
             new = self
 
         return new._replace_in_children(old_pattern, new_pattern)
+
+    @abstractmethod
+    def _replace_in_children(self, old_pattern: Node, new_pattern: Node) -> Node:
+        pass
+
+    def substitute(self, pattern: Node, new: Node) -> Node:
+        return new if pattern.matches(self) else self._substitute_in_children(pattern, new)
+
+    @abstractmethod
+    def _substitute_in_children(self, pattern: Node, new: Node) -> Node:
+        pass
 
     @abstractmethod
     def reduce(self, depth=-1) -> Node:
@@ -246,6 +253,9 @@ class Leaf(Node, ABC):
         return self
 
     def _replace_in_children(self, old_pattern: Node, new_pattern: Node) -> Node:
+        return self
+
+    def _substitute_in_children(self, pattern: Node, new: Node) -> Node:
         return self
 
     def __init__(self, data):
@@ -816,6 +826,12 @@ class AdvancedBinOp(Node, ABC):
             inverted_values=(x.replace(old_pattern, new_pattern) for x in self.inverted_values)
         )
 
+    def _substitute_in_children(self, pattern: Node, new: Node) -> Node:
+        return type(self)(
+            base_values=(x.substitute(pattern, new) for x in self.base_values),
+            inverted_values=(x.substitute(pattern, new) for x in self.inverted_values)
+        )
+
     def is_evaluable(self) -> bool:
         return all(c.is_evaluable() for c in itertools.chain(self.base_values, self.inverted_values))
 
@@ -976,6 +992,9 @@ class BinOp(Node, ABC):
     def _replace_in_children(self, old_pattern: Node, new_pattern: Node) -> Node:
         return type(self)(self.left.replace(old_pattern, new_pattern), self.right.replace(old_pattern, new_pattern))
 
+    def _substitute_in_children(self, pattern: Node, new: Node) -> Node:
+        return type(self)(self.left.substitute(pattern, new), self.right.substitute(pattern, new))
+
     def is_evaluable(self) -> bool:
         return self.left.is_evaluable() and self.right.is_evaluable()
 
@@ -1112,6 +1131,9 @@ class Wildcard(Node):
         return match_result.wildcards[self.name]
 
     def _replace_in_children(self, old_pattern: Node, new_pattern: Node) -> Node:
+        return self
+
+    def _substitute_in_children(self, pattern: Node, new: Node) -> Node:
         return self
 
     def is_evaluable(self) -> bool:

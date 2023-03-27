@@ -96,13 +96,13 @@ class NodeFunction(Function):
         return hash(self) == hash(other)
 
     def reduce_func(self, argument: Node, depth: int) -> Optional[Node]:
-        return self.body.replace(self.parameter, argument.reduce(depth-1)).reduce(depth)
+        return self.body.substitute(self.parameter, argument.reduce(depth-1)).reduce(depth)
 
     def can_evaluate(self, argument: Node) -> bool:
         return argument.is_evaluable()
 
     def evaluate(self, argument: Node) -> Node:
-        return self.body.replace(self.parameter, argument.evaluate()).evaluate()
+        return self.body.substitute(self.parameter, argument.evaluate()).evaluate()
 
     def __init__(self, name: str, parameter: Node, body: Node):
         self.name = name
@@ -169,6 +169,9 @@ class FunctionApplication(Node):
 
     def _replace_in_children(self, old_pattern: Node, new_pattern: Node) -> Node:
         return self.change_argument(self.argument.replace(old_pattern, new_pattern))
+
+    def _substitute_in_children(self, pattern: Node, new: Node) -> Node:
+        return self.change_argument(self.argument.substitute(pattern, new))
 
     def contains(self, pattern: Node) -> bool:
         return pattern.matches(self) is not None or self.argument.contains(pattern)

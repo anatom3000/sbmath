@@ -198,8 +198,17 @@ class Node(ABC):
         return new
 
     @abstractmethod
-    def replace(self, old: Node, new: Node):
+    def _replace_in_children(self, old_pattern: Node, new_pattern: Node) -> Node:
         pass
+
+    def replace(self, old_pattern: Node, new_pattern: Node):
+        m = old_pattern.matches(self)
+        if m:
+            new = new_pattern._replace_identifiers(m)
+        else:
+            new = self
+
+        return new._replace_in_children(old_pattern, new_pattern)
 
     @abstractmethod
     def reduce(self, depth=-1) -> Node:
@@ -236,8 +245,8 @@ class Leaf(Node, ABC):
     def _replace_identifiers(self, match_result: MatchResult) -> Node:
         return self
 
-    def replace(self, old: Node, new: Node):
-        return new if old.matches(self) else self
+    def _replace_in_children(self, old_pattern: Node, new_pattern: Node) -> Node:
+        return self
 
     def __init__(self, data):
         super().__init__()
@@ -801,10 +810,10 @@ class AdvancedBinOp(Node, ABC):
             inverted_values=(x._replace_identifiers(match_result) for x in self.inverted_values)
         )
 
-    def replace(self, old: Node, new: Node):
-        return new if old.matches(self) else type(self)(
-            base_values=(x.replace(old, new) for x in self.base_values),
-            inverted_values=(x.replace(old, new) for x in self.inverted_values)
+    def _replace_in_children(self, old_pattern: Node, new_pattern: Node) -> Node:
+        return type(self)(
+            base_values=(x.replace(old_pattern, new_pattern) for x in self.base_values),
+            inverted_values=(x.replace(old_pattern, new_pattern) for x in self.inverted_values)
         )
 
     def is_evaluable(self) -> bool:
@@ -964,8 +973,8 @@ class BinOp(Node, ABC):
     def _replace_identifiers(self, match_result: MatchResult) -> Node:
         return type(self)(self.left._replace_identifiers(match_result), self.right._replace_identifiers(match_result))
 
-    def replace(self, old: Node, new: Node):
-        return new if old.matches(self) else type(self)(self.left.replace(old, new), self.right.replace(old, new))
+    def _replace_in_children(self, old_pattern: Node, new_pattern: Node) -> Node:
+        return type(self)(self.left.replace(old_pattern, new_pattern), self.right.replace(old_pattern, new_pattern))
 
     def is_evaluable(self) -> bool:
         return self.left.is_evaluable() and self.right.is_evaluable()
@@ -1102,8 +1111,8 @@ class Wildcard(Node):
 
         return match_result.wildcards[self.name]
 
-    def replace(self, old: Node, new: Node):
-        return new if old.matches(self) else self
+    def _replace_in_children(self, old_pattern: Node, new_pattern: Node) -> Node:
+        return self
 
     def is_evaluable(self) -> bool:
         return False

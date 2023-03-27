@@ -12,6 +12,14 @@ from sbmath._utils import debug, inc_indent, dec_indent
 class Function(ABC):
     name: str
 
+    @abstractmethod
+    def __hash__(self):
+        pass
+
+    @abstractmethod
+    def __eq__(self, other):
+        pass
+
     def __str__(self):
         return f"function {self.name}"
 
@@ -34,17 +42,20 @@ class Function(ABC):
         pass
 
     @classmethod
-    def from_expression(cls, body: expression, parameter: Node) -> Function:
-        func_name = f"_anonymous_{hash((parameter, body))}"
+    def from_expression(cls, body: expression, parameter: Node, name: str = None) -> Function:
+        if name is None:
+            name = f"_anonymous_{hash((parameter, body))}"
 
-        return NodeFunction(func_name, parameter, body)
-
-    @abstractmethod
-    def _derivative(self) -> Function:
-        pass
+        return NodeFunction(name, parameter, body)
 
 
 class PythonFunction(Function):
+    def __hash__(self):
+        return hash((self.name, self.pyfunc, tuple(self.special_values)))
+
+    def __eq__(self, other):
+        return hash(self) == hash(other)
+
     def _derivative(self) -> Function:
         return self._deriv
 
@@ -69,18 +80,20 @@ class PythonFunction(Function):
 
         return Value(self.pyfunc(argument.approximate()))
 
-    def __init__(self, func: Callable[[float], float], special_values: dict[Node, Node] = None, name: str = None, derivative: Optional[Function] = None):
+    def __init__(self, func: Callable[[float], float], special_values: dict[Node, Node] = None, name: str = None):
         self.pyfunc = func
         if name is None:
             name = self.pyfunc.__name__
         self.name = name
         self.special_values = {} if special_values is None else special_values
-        self._deriv = derivative
 
 
 class NodeFunction(Function):
-    def _derivative(self):
-        raise TypeError("NodeFunction._derivative is not implemented. You might want to use `sbmath.ops.diff`.")
+    def __hash__(self):
+        return hash((self.name, self.parameter, self.body))
+
+    def __eq__(self, other):
+        return hash(self) == hash(other)
 
     def reduce_func(self, argument: Node, depth: int) -> Optional[Node]:
         return self.body.replace(self.parameter, argument.reduce(depth-1)).reduce(depth)
@@ -98,7 +111,6 @@ class NodeFunction(Function):
 
 
 class FunctionApplication(Node):
-
     def approximate(self) -> float:
         return self.function.evaluate(self.argument).approximate()
 
@@ -155,8 +167,8 @@ class FunctionApplication(Node):
         self._function = function
         self.argument = argument
 
-    def replace(self, old: Node, new: Node):
-        return new if old.matches(self) else self.change_argument(self.argument.replace(old, new))
+    def _replace_in_children(self, old_pattern: Node, new_pattern: Node) -> Node:
+        return self.change_argument(self.argument.replace(old_pattern, new_pattern))
 
     def contains(self, pattern: Node) -> bool:
         return pattern.matches(self) is not None or self.argument.contains(pattern)

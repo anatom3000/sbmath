@@ -40,8 +40,9 @@ _std.add_variable("pi", parse(math.pi))
 _std.add_variable("tau", parse(math.tau))
 _std.add_variable("e", parse(math.e))
 
+
 # not the optimal implementation for abs since it will approximate any parameter
-# TODO: better implementation that integrates better with the symbolic representation
+# TODO: implementation that integrates better with the symbolic representation
 _std.add_function(
     PythonFunction(abs)
 )
@@ -51,7 +52,6 @@ _std.add_function(
         parse("[arg]^2"): parse("[arg]")
     })
 )
-
 _std.add_function(
     PythonFunction(math.exp, {
         parse(0): parse(1),
@@ -64,7 +64,8 @@ _std.add_function(
     PythonFunction(math.log, {
         parse(1):   parse(0),
         parse("e"): parse(1),
-        parse("exp([arg])"): parse("[arg]")
+        # TODO: fix infinite recursion with mutually referencing functions
+        # parse("exp([arg])"): parse("[arg]")
     }, "ln")
 )
 

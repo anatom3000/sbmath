@@ -64,8 +64,7 @@ _std.add_function(
     PythonFunction(math.log, {
         parse(1):   parse(0),
         parse("e"): parse(1),
-        # TODO: fix infinite recursion with mutually referencing functions
-        # parse("exp([arg])"): parse("[arg]")
+        parse("exp([arg])"): parse("[arg]")
     }, "ln")
 )
 

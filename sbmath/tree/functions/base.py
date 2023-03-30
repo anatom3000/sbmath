@@ -63,6 +63,7 @@ class PythonFunction(Function):
         for pattern, image in self.special_values.items():
             new = argument.morph(pattern, image)
             if new is not None:
+                # print(f"reducing {new = } from {self = }, {argument = }")
                 return new.reduce(depth-1)
 
         return None
@@ -120,9 +121,6 @@ class FunctionApplication(Node):
     def reduce(self, depth=-1) -> Node:
         if depth == 0:
             return self
-
-        if self.is_evaluable():
-            return self.evaluate()
 
         try:
             r = self.function.reduce_func(self.argument, depth)
@@ -233,7 +231,6 @@ class FunctionWildcard(Wildcard):
 
     def _match_contraints(self, value: Node) -> bool:
         # TODO: function constraints
-
         return True
 
     def matches(self, value: Node, state: MatchResult = None) -> Optional[MatchResult]:

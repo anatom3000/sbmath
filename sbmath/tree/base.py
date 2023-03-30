@@ -1064,6 +1064,9 @@ class Value(Leaf):
 
 
 class Variable(Leaf):
+    def __init__(self, data, replace_on_reduce: bool = False):
+        super().__init__(data)
+        self.replace_on_reduce = replace_on_reduce
 
     def is_evaluable(self) -> bool:
         return self.context is not None and self.data in self.context.functions.keys()
@@ -1075,10 +1078,19 @@ class Variable(Leaf):
         if self.data not in self.context.variables.keys():
             raise MissingContextError(f"context exists but variable '{self.data}' is undefined")
 
-        return self.context.variables[self.data].evaluate()
+        if self.replace_on_reduce:
+            return self.context.variables[self.data].evaluate()
+
+        return self
+
+    def reduce(self, depth=-1) -> Node:
+        if self.replace_on_reduce:
+            return self.context.variables[self.data].reduce(depth)
+        else:
+            return self
 
     def approximate(self) -> float:
-        return self.evaluate().approximate()
+        return self.context.variables[self.data].evaluate().approximate()
 
 
 class Wildcard(Node):

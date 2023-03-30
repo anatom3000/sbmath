@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-from sbmath.tree import Node, Wildcard, Value, Function, PythonFunction, Variable, NodeFunction
+import math
+
+from sbmath.tree import Node, Wildcard, Value, Function, PythonFunction, Variable, NodeFunction, AddAndSub
 from sbmath.parser import parse
 
 from sbmath._utils import debug
@@ -89,9 +91,16 @@ def diff(expression: Node, variable: Variable) -> Node:
 
 _prod_sum_pat = parse("[k]*([a]+[b])")
 _sum_prod_pat = parse("[k]*[a]+[k]*[b]")
+_binom_pat = parse("([a]+[b])^[n]")
 
 
 def expand(expression: Node) -> Node:
+    m = _binom_pat.matches(expression)
+    if m is not None and isinstance(m.wildcards["n"], Value) and m.wildcards["n"].data.is_integer():
+        n = int(m.wildcards["n"].data)
+        a = m.wildcards["a"]
+        b = m.wildcards["b"]
+        expression = AddAndSub.add(*(math.comb(n, k) * a ** (n-k) * b ** k for k in range(n+1))).reduce()
+
     # the pattern matching is powerful enough to support more complex expansions
-    # just by patt
     return expression.replace(_prod_sum_pat, _sum_prod_pat)

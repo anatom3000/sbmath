@@ -915,7 +915,14 @@ class AdvancedBinOp(Node, ABC):
 
 class BinOp(Node, ABC):
     name: str
-    identity: Node
+
+    right_identity: Node
+
+    left_absorbing_element: Optional[Node] = None
+    left_absorbing_result: Optional[Node] = None
+
+    right_absorbing_element: Optional[Node] = None
+    right_absorbing_result: Optional[Node] = None
 
     def __eq__(self, other):
         if not isinstance(other, type(self)):
@@ -931,10 +938,16 @@ class BinOp(Node, ABC):
         reduced_right = self.right.reduce(depth - 1)
 
         if reduced_right.is_evaluable():
-            if reduced_left.is_evaluable():
-                return type(self)(reduced_left, reduced_right).evaluate()
+            if reduced_right.evaluate() == self.right_absorbing_element:
+                return self.right_absorbing_result
 
-            if reduced_right.evaluate() == self.identity.evaluate():
+            if reduced_left.is_evaluable():
+                if reduced_left.evaluate() == self.left_absorbing_element:
+                    return self.left_absorbing_result
+
+                return type(self)(reduced_left, reduced_right)
+
+            if reduced_right.evaluate() == self.right_identity:
                 return reduced_left
 
         return type(self)(reduced_left, reduced_right)
@@ -1430,7 +1443,14 @@ class MulAndDiv(AdvancedBinOp):
 
 class Pow(BinOp):
     name = '^'
-    identity = Value(1.0)
+
+    right_identity = Value(1.0)
+
+    left_absorbing_element = Value(1.0)
+    left_absorbing_result = Value(1.0)
+
+    right_absorbing_element = Value(0.0)
+    right_absorbing_result = Value(1.0)
 
     @staticmethod
     def approximator(left: float, right: float) -> float:

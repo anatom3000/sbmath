@@ -26,6 +26,7 @@ operations = [
     'reduce_no_eval',
     'expand',
     'match',
+    'subst',
     'replace',
     'morph',
     'contains',
@@ -204,6 +205,30 @@ def repl():
                 if expr is None:
                     continue
                 result = pat.matches(expr)
+
+            elif op == 'subst':
+                try:
+                    old = parse(input(f"{LIGHT_GRAY}Old node: {END}"))
+                    debug(f" => {old}", flag='repl')
+                except (EOFError, KeyboardInterrupt):
+                    break
+                if old is None:
+                    continue
+                try:
+                    new = parse(input(f"{LIGHT_GRAY}New node: {END}"))
+                    debug(f" => {new}", flag='repl')
+                except (EOFError, KeyboardInterrupt):
+                    break
+                if new is None:
+                    continue
+                try:
+                    expr = parse(input(f"{LIGHT_GRAY}Expr: {END}"))
+                    debug(f" => {expr}", flag='repl')
+                except (EOFError, KeyboardInterrupt):
+                    break
+                if expr is None:
+                    continue
+                result = expr.substitute(old, new)
 
             elif op == 'expand':
                 try:

@@ -211,7 +211,11 @@ class Node(ABC):
         pass
 
     def substitute(self, pattern: Node, new: Node) -> Node:
-        return new if pattern.matches(self) else self._substitute_in_children(pattern, new)
+        m = pattern.matches(self)
+        if m:
+            return new._replace_identifiers(m)
+        else:
+            return self._substitute_in_children(pattern, new)
 
     @abstractmethod
     def _substitute_in_children(self, pattern: Node, new: Node) -> Node:

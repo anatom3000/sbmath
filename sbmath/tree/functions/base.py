@@ -266,7 +266,10 @@ class FunctionWildcard(Wildcard):
         return None
 
     def _replace_identifiers(self, match_result: MatchResult) -> Node:
-        return self.change_argument(self.argument._replace_identifiers(match_result))
+        if self.name in match_result.functions_wildcards:
+            return FunctionApplication(match_result.functions_wildcards[self.name], self.argument._replace_identifiers(match_result))
+        else:
+            return self.change_argument(self.argument._replace_identifiers(match_result))
 
     def __str__(self):
         func = f"[{self.name}, "

@@ -100,6 +100,7 @@ def expand(expression: Node) -> Node:
         n = int(m.wildcards["n"].data)
         a = m.wildcards["a"]
         b = m.wildcards["b"]
+        # binomial formula
         expression = AddAndSub.add(*(math.comb(n, k) * a ** (n-k) * b ** k for k in range(n+1))).reduce()
 
     # the pattern matching is powerful enough to support more complex expansions

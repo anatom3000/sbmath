@@ -61,6 +61,7 @@ class PythonFunction(Function):
 
     def reduce_func(self, argument: Node, depth: int) -> Optional[Node]:
         for pattern, image in self.special_values.items():
+            debug(f"{argument = }, {pattern = }, {image = }", flag='reduce_func')
             new = argument.morph(pattern, image)
             if new is not None:
                 # print(f"reducing {new = } from {self = }, {argument = }")
@@ -192,14 +193,14 @@ class FunctionApplication(Node):
         if no_reduce_state is not None:
             return no_reduce_state
 
-        reduced_self = self.reduce()
+        # reduced_self = self.reduce()
         reduced_value = value.reduce()
 
-        if not isinstance(reduced_self, FunctionApplication):
-            return reduced_self.matches(reduced_value, state)
+        # if not isinstance(reduced_self, FunctionApplication):
+        #     return reduced_self.matches(reduced_value, state)
 
         # noinspection PyProtectedMember
-        return reduced_self._match_no_reduce(reduced_value, state)
+        return self._match_no_reduce(reduced_value, state)
 
     def __str__(self):
         if isinstance(self._function, str):

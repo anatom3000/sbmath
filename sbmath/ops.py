@@ -28,38 +28,52 @@ def diff(expression: Node, variable: Variable) -> Node:
     if m:
         result = Value(0.0)
         result.context = expression.context
+
         return result
 
     m = variable.matches(expression)
     if m:
         result = Value(1.0)
         result.context = expression.context
+
         return result
 
     m = _sum_pat.matches(expression)
     if m:
-        return (diff(m.wildcards["u"], variable) + diff(m.wildcards["v"], variable)).reduce()
+        result = (diff(m.wildcards["u"], variable) + diff(m.wildcards["v"], variable)).reduce()
+        result.context = expression.context
+
+        return result
 
     m = _prod_pat.matches(expression)
     if m and not m.weak:
         u = m.wildcards["u"]
         v = m.wildcards["v"]
         # product rule
-        return (diff(u, variable) * v + u * diff(v, variable)).reduce()
+        result = (diff(u, variable) * v + u * diff(v, variable)).reduce()
+        result.context = expression.context
+
+        return result
 
     m = _div_pat.matches(expression)
     if m:
         u = m.wildcards["u"]
         v = m.wildcards["v"]
         # quotient rule
-        return ((diff(u, variable) * v - u * diff(v, variable)) / (v ** 2)).reduce()
+        result = ((diff(u, variable) * v - u * diff(v, variable)) / (v ** 2)).reduce()
+        result.context = expression.context
+
+        return result
 
     # redundant with next match but faster in most cases
     m = (Wildcard("u") ** Wildcard("k", constant_with=variable)).matches(expression)
     if m:
         u = m.wildcards["u"]
         k = m.wildcards["k"]
-        return (k * (u ** (k - 1))).reduce()
+        result = (k * (u ** (k - 1))).reduce()
+        result.context = expression.context
+
+        return result
 
     # m = (Wildcard("u") ** Wildcard("k", constant_with=variable)).matches(expression)
     # if m:
@@ -73,20 +87,30 @@ def diff(expression: Node, variable: Variable) -> Node:
         v = m.wildcards["v"]
         # u^v = exp( v*ln(u) ) = exp(w) => ( u^v )' = ( exp(w) )'
         w = v * std.functions["ln"](u)
-        return (diff(w, variable) * std.functions["exp"](w)).reduce()
+        result = (diff(w, variable) * std.functions["exp"](w)).reduce()
+        result.context = expression.context
+
+        return result
 
     m = _func_pat.matches(expression)
     if m:
         func = m.functions_wildcards["func"]
         arg = m.wildcards["arg"]
         if isinstance(func, NodeFunction):
-            return diff(func(arg).reduce(), variable)
+            result = diff(func(arg).reduce(), variable)
+            result.context = expression.context
+            return result
         if func in _derivatives.keys():
-            return (diff(arg, variable) * _derivatives[func](arg)).reduce()
+            result = (diff(arg, variable) * _derivatives[func](arg)).reduce()
+            result.context = expression.context
+            return result
 
     # TODO: functions with multiple parameters
     # TODO: function operating on raw nodes in expression tree
-    return Wildcard("diff", expr=expression, var=variable)
+    result = Wildcard("diff", expr=expression, var=variable)
+    result.context = expression.context
+
+    return result
 
 
 _prod_sum_pat = parse("[k]*([a]+[b])")

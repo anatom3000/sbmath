@@ -225,6 +225,7 @@ class Node(ABC):
     def reduce(self, depth=-1) -> Node:
         pass
 
+    # TODO: replace None.reduce_no_eval by flags in Node.reduce/matches/morph/replace/substitute/etc.
     def reduce_no_eval(self, depth=-1) -> Node:
         return self.reduce(depth)
 

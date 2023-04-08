@@ -10,9 +10,9 @@ DEBUG_FLAGS = (
     # "match",
     # "match_adv_wc",
     # "match_wc",
-    # "reduce",
+    "reduce",
     # "reduce_func",
-    "diff",
+    # "diff",
     # "misc"
 )
 DEBUG_INDENT = 0

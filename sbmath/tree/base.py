@@ -370,6 +370,8 @@ class AdvancedBinOp(Node, ABC):
                 key = self._invert_value(key)
                 value *= -1
 
+            # TODO: fix ()
+
             if value == 1:
                 base_values.append(key)
             elif value == -1:
@@ -389,7 +391,7 @@ class AdvancedBinOp(Node, ABC):
                     base_values.append(evaluated.base_values)
                     inverted_values.append(evaluated.inverted_values)
                 elif self._should_invert_value(evaluated):
-                    inverted_values.append(evaluated)
+                    inverted_values.append(self._invert_value(evaluated))
                 else:
                     base_values.append(evaluated)
 

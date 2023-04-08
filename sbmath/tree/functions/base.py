@@ -30,7 +30,7 @@ class Function(ABC):
         return FunctionApplication(self, argument)
 
     @abstractmethod
-    def reduce_func(self, argument: Node, depth: int) -> Optional[Node]:
+    def reduce_func(self, argument: Node, depth: int, evaluate: bool = True) -> Optional[Node]:
         pass
 
     @abstractmethod
@@ -59,13 +59,13 @@ class PythonFunction(Function):
     def _derivative(self) -> Function:
         return self._deriv
 
-    def reduce_func(self, argument: Node, depth: int) -> Optional[Node]:
+    def reduce_func(self, argument: Node, depth: int, evaluate: bool = True) -> Optional[Node]:
         for pattern, image in self.special_values.items():
             debug(f"{argument = }, {pattern = }, {image = }", flag='reduce_func')
-            new = argument.morph(pattern, image)
+            new = argument.morph(pattern, image, evaluate=evaluate)
             if new is not None:
                 # print(f"reducing {new = } from {self = }, {argument = }")
-                return new.reduce(depth-1)
+                return new.reduce(depth-1, evaluate=evaluate)
 
         return None
 
@@ -97,8 +97,8 @@ class NodeFunction(Function):
     def __eq__(self, other):
         return hash(self) == hash(other)
 
-    def reduce_func(self, argument: Node, depth: int) -> Optional[Node]:
-        return self.body.substitute(self.parameter, argument.reduce(depth-1)).reduce(depth)
+    def reduce_func(self, argument: Node, depth: int, evaluate: bool = True) -> Optional[Node]:
+        return self.body.substitute(self.parameter, argument.reduce(depth-1, evaluate=evaluate)).reduce(depth, evaluate=evaluate)
 
     def can_evaluate(self, argument: Node) -> bool:
         return argument.is_evaluable()
@@ -119,18 +119,18 @@ class FunctionApplication(Node):
     def evaluate(self) -> Node:
         return self.function.evaluate(self.argument)
 
-    def reduce(self, depth=-1) -> Node:
+    def reduce(self, depth=-1, *, evaluate: bool = True) -> Node:
         if depth == 0:
             return self
 
         try:
-            r = self.function.reduce_func(self.argument, depth)
+            r = self.function.reduce_func(self.argument, depth, evaluate=evaluate)
             if r is not None:
                 return r
         except MissingContextError:
             pass
 
-        return self.change_argument(self.argument.reduce(depth - 1))
+        return self.change_argument(self.argument.reduce(depth - 1, evaluate=evaluate))
 
     def is_evaluable(self) -> bool:
         try:
@@ -166,41 +166,41 @@ class FunctionApplication(Node):
         self._function = function
         self.argument = argument
 
-    def _replace_in_children(self, old_pattern: Node, new_pattern: Node) -> Node:
-        return self.change_argument(self.argument.replace(old_pattern, new_pattern))
+    def _replace_in_children(self, old_pattern: Node, new_pattern: Node, evaluate: bool) -> Node:
+        return self.change_argument(self.argument.replace(old_pattern, new_pattern, evaluate=evaluate))
 
-    def _substitute_in_children(self, pattern: Node, new: Node) -> Node:
-        return self.change_argument(self.argument.substitute(pattern, new))
+    def _substitute_in_children(self, pattern: Node, new: Node, evaluate: bool) -> Node:
+        return self.change_argument(self.argument.substitute(pattern, new, evaluate=evaluate))
 
-    def contains(self, pattern: Node) -> bool:
-        return pattern.matches(self) is not None or self.argument.contains(pattern)
+    def contains(self, pattern: Node, *, evaluate: bool = True) -> bool:
+        return pattern.matches(self, evaluate=evaluate) is not None or self.argument.contains(pattern, evaluate=evaluate)
 
-    def _match_no_reduce(self, value: Node, state: MatchResult) -> Optional[MatchResult]:
+    def _match_no_reduce(self, value: Node, state: MatchResult, evaluate: bool) -> Optional[MatchResult]:
         if not isinstance(value, type(self)):
             return None
 
         if self.function != value.function:
             return None
 
-        return self.argument.matches(value.argument, state)
+        return self.argument.matches(value.argument, state, evaluate=evaluate)
 
-    def matches(self, value: Node, state: MatchResult = None) -> Optional[MatchResult]:
+    def matches(self, value: Node, state: MatchResult = None, *, evaluate: bool = True) -> Optional[MatchResult]:
         if state is None:
             state = MatchResult()
 
-        no_reduce_state = self._match_no_reduce(value, copy.deepcopy(state))
+        no_reduce_state = self._match_no_reduce(value, copy.deepcopy(state), evaluate)
 
         if no_reduce_state is not None:
             return no_reduce_state
 
         # reduced_self = self.reduce()
-        reduced_value = value.reduce()
+        reduced_value = value.reduce(evaluate=evaluate)
 
         # if not isinstance(reduced_self, FunctionApplication):
         #     return reduced_self.matches(reduced_value, state)
 
         # noinspection PyProtectedMember
-        return self._match_no_reduce(reduced_value, state)
+        return self._match_no_reduce(reduced_value, state, evaluate)
 
     def __str__(self):
         if isinstance(self._function, str):
@@ -224,40 +224,40 @@ class FunctionWildcard(Wildcard):
     def change_argument(self, new_argument: Node):
         return type(self)(self.name, new_argument, **self.constraints)
 
-    def reduce(self, depth=-1) -> Node:
+    def reduce(self, depth=-1, *, evaluate: bool = True) -> Node:
         if depth == 0:
             return self
 
-        return self.change_argument(self.argument.reduce(depth - 1))
+        return self.change_argument(self.argument.reduce(depth - 1, evaluate=evaluate))
 
-    def _match_contraints(self, value: Node) -> bool:
+    def _match_contraints(self, value: Node, evaluate: bool) -> bool:
         # TODO: function constraints
         return True
 
-    def matches(self, value: Node, state: MatchResult = None) -> Optional[MatchResult]:
+    def matches(self, value: Node, state: MatchResult = None, *, evaluate: bool = True) -> Optional[MatchResult]:
         if state is None:
             state = MatchResult()
 
         if not isinstance(value, FunctionApplication):
             return None
 
-        maybe_new = self.argument.matches(value.argument, copy.deepcopy(state))
+        maybe_new = self.argument.matches(value.argument, copy.deepcopy(state), evaluate=evaluate)
         if maybe_new:
             state = maybe_new
         else:
-            maybe_new = self.argument.reduce().matches(value.argument.reduce(), copy.deepcopy(state))
+            maybe_new = self.argument.reduce(evaluate=evaluate).matches(value.argument.reduce(), copy.deepcopy(state), evaluate=evaluate)
             if maybe_new:
                 state = maybe_new
             else:
                 return None
 
         if self.name == '_':
-            return state if self._match_contraints(value) else None
+            return state if self._match_contraints(value, evaluate) else None
 
         if self.name in state.functions_wildcards.keys() and value.matches(state.functions_wildcards[self.name]) is None:
             return None
 
-        if self._match_contraints(value):
+        if self._match_contraints(value, evaluate):
             state.functions_wildcards[self.name] = value.function
             return state
 
@@ -286,4 +286,3 @@ class FunctionWildcard(Wildcard):
     def __init__(self, name: str, argument: Node, **constraints: Node):
         super().__init__(name, **constraints)
         self.argument = argument
-

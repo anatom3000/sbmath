@@ -76,23 +76,6 @@ def reduce(print_back=False):
         print(f"R: {r}")
 
 
-def reduce_no_eval(print_back=False):
-    while True:
-        try:
-            expr = parse(input("Expression: "))
-        except ParsingError:
-            print(" => Something went wrong...")
-            continue
-
-        if expr is None:
-            continue
-
-        if print_back: print(" =>", expr)
-
-        r = expr.reduce_no_eval()
-        print(f"R: {r}")
-
-
 def evaluate(print_back=False):
     while True:
         try:

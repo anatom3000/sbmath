@@ -230,6 +230,9 @@ def parse(data: str | Real, context: Optional[tree.Context] = ContextNotGiven) -
 
     result = parser.parse(_lexer.tokenize(data))
 
+    if result is None:
+        return None
+
     if not isinstance(result, tree.Node):
         raise ParsingError(f"parser returned {repr(result)} of type {type(result).__name__}, expected type Node")
 

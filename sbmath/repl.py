@@ -23,7 +23,6 @@ operations = [
     'approx',
     'eval',
     'reduce',
-    'reduce_no_eval',
     'expand',
     'match',
     'subst',
@@ -178,16 +177,6 @@ def repl():
                     depth = -1
 
                 result = expr.reduce(depth)
-
-            elif op == 'reduce_no_eval':
-                try:
-                    expr = parse(input(f"{LIGHT_GRAY}Expr: {END}"))
-                    debug(f" => {expr}", flag='repl')
-                except (EOFError, KeyboardInterrupt):
-                    break
-                if expr is None:
-                    continue
-                result = expr.reduce_no_eval()
 
             elif op == 'match':
                 try:

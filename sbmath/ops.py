@@ -23,7 +23,7 @@ _derivatives: dict[Function, Function] = {
 }
 
 
-def diff(expression: Node, variable: Variable) -> Node:
+def _diff_no_reduce(expression: Node, variable: Variable) -> Node:
     m = Wildcard("_", constant_with=variable).matches(expression)
     if m:
         result = Value(0.0)
@@ -40,7 +40,7 @@ def diff(expression: Node, variable: Variable) -> Node:
 
     m = _sum_pat.matches(expression)
     if m:
-        result = (diff(m.wildcards["u"], variable) + diff(m.wildcards["v"], variable)).reduce()
+        result = _diff_no_reduce(m.wildcards["u"], variable) + _diff_no_reduce(m.wildcards["v"], variable)
         result.context = expression.context
 
         return result
@@ -50,7 +50,7 @@ def diff(expression: Node, variable: Variable) -> Node:
         u = m.wildcards["u"]
         v = m.wildcards["v"]
         # product rule
-        result = (diff(u, variable) * v + u * diff(v, variable)).reduce()
+        result = _diff_no_reduce(u, variable) * v + u * _diff_no_reduce(v, variable)
         result.context = expression.context
 
         return result
@@ -60,7 +60,7 @@ def diff(expression: Node, variable: Variable) -> Node:
         u = m.wildcards["u"]
         v = m.wildcards["v"]
         # quotient rule
-        result = ((diff(u, variable) * v - u * diff(v, variable)) / (v ** 2)).reduce()
+        result = (_diff_no_reduce(u, variable) * v - u * _diff_no_reduce(v, variable)) / (v ** 2)
         result.context = expression.context
 
         return result
@@ -70,7 +70,7 @@ def diff(expression: Node, variable: Variable) -> Node:
     if m:
         u = m.wildcards["u"]
         k = m.wildcards["k"]
-        result = (k * (u ** (k - 1))).reduce()
+        result = (k * _diff_no_reduce(u, variable) * (u ** (k - 1)))
         result.context = expression.context
 
         return result
@@ -87,7 +87,7 @@ def diff(expression: Node, variable: Variable) -> Node:
         v = m.wildcards["v"]
         # u^v = exp( v*ln(u) ) = exp(w) => ( u^v )' = ( exp(w) )'
         w = v * std.functions["ln"](u)
-        result = (diff(w, variable) * std.functions["exp"](w)).reduce()
+        result = _diff_no_reduce(w, variable) * std.functions["exp"](w)
         result.context = expression.context
 
         return result
@@ -97,11 +97,11 @@ def diff(expression: Node, variable: Variable) -> Node:
         func = m.functions_wildcards["func"]
         arg = m.wildcards["arg"]
         if isinstance(func, NodeFunction):
-            result = diff(func(arg).reduce(), variable)
+            result = _diff_no_reduce(func(arg).reduce(depth=1), variable)
             result.context = expression.context
             return result
         if func in _derivatives.keys():
-            result = (diff(arg, variable) * _derivatives[func](arg)).reduce()
+            result = (_diff_no_reduce(arg, variable) * _derivatives[func](arg).reduce(depth=1))
             result.context = expression.context
             return result
 
@@ -111,6 +111,10 @@ def diff(expression: Node, variable: Variable) -> Node:
     result.context = expression.context
 
     return result
+
+
+def diff(expression: Node, variable: Variable) -> Node:
+    return _diff_no_reduce(expression, variable)  # .reduce()
 
 
 _prod_sum_pat = parse("[k]*([a]+[b])")

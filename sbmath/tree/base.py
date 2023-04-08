@@ -321,38 +321,34 @@ class AdvancedBinOp(Node, ABC):
         else:
             non_eval_part = self
 
-        value_occurences = defaultdict(int)
+        value_occurences: defaultdict[Node, int] = defaultdict(int)
 
         for value in non_eval_part.base_values:
             reduced = value.reduce(depth - 1, evaluate=evaluate)
             if isinstance(reduced, type(non_eval_part)):
                 v: Node
                 for v in reduced.base_values:
-                    # noinspection PyTypeChecker
                     value_occurences[v] += 1
                 v: Node
                 for v in reduced.inverted_values:
-                    # noinspection PyTypeChecker
                     value_occurences[v] -= 1
             else:
-                # noinspection PyTypeChecker
                 value_occurences[reduced] += 1
 
         for value in non_eval_part.inverted_values:
             reduced = value.reduce(depth - 1, evaluate=evaluate)
+
             if isinstance(reduced, type(non_eval_part)):
                 for v in reduced.base_values:
-                    # noinspection PyTypeChecker
                     value_occurences[v] -= 1
                 for v in reduced.inverted_values:
-                    # noinspection PyTypeChecker
                     value_occurences[v] += 1
             else:
-                # noinspection PyTypeChecker
                 value_occurences[reduced] -= 1
 
         base_values = []
         inverted_values = []
+        remaining_evaluable = type(self)((), ())
 
         for key, value in value_occurences.items():
             if value == 0:
@@ -361,8 +357,12 @@ class AdvancedBinOp(Node, ABC):
             if key == self.identity:
                 continue
 
-            if self.absorbing_element == key:
+            if key == self.absorbing_element:
                 return self.absorbing_element
+
+            if evaluate and key.is_evaluable():
+                remaining_evaluable.base_values.append(self._repeat_value(key, value))
+                continue
 
             # noinspection PyTypeChecker
             if self._should_invert_value(key):
@@ -378,6 +378,20 @@ class AdvancedBinOp(Node, ABC):
                 base_values.append(self._repeat_value(key, value))
             else:
                 inverted_values.append(self._repeat_value(self._invert_value(key), value))
+
+        if evaluate:
+            evaluated = remaining_evaluable.evaluate()
+            if evaluated == self.absorbing_element:
+                return self.absorbing_element
+
+            if evaluated != self.identity:
+                if isinstance(evaluated, type(self)):
+                    base_values.append(evaluated.base_values)
+                    inverted_values.append(evaluated.inverted_values)
+                elif self._should_invert_value(evaluated):
+                    inverted_values.append(evaluated)
+                else:
+                    base_values.append(evaluated)
 
         if len(base_values) == 0:
             if len(inverted_values) == 0:

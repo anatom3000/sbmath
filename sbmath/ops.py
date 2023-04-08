@@ -114,7 +114,7 @@ def _diff_no_reduce(expression: Node, variable: Variable) -> Node:
 
 
 def diff(expression: Node, variable: Variable) -> Node:
-    return _diff_no_reduce(expression, variable)  # .reduce()
+    return _diff_no_reduce(expression, variable).reduce()
 
 
 _prod_sum_pat = parse("[k]*([a]+[b])")

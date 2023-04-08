@@ -30,7 +30,7 @@ class Function(ABC):
         return FunctionApplication(self, argument)
 
     @abstractmethod
-    def reduce_func(self, argument: Node, depth: int, evaluate: bool = True) -> Optional[Node]:
+    def reduce_func(self, argument: Node, depth: int, evaluate: bool) -> Optional[Node]:
         pass
 
     @abstractmethod
@@ -59,10 +59,10 @@ class PythonFunction(Function):
     def _derivative(self) -> Function:
         return self._deriv
 
-    def reduce_func(self, argument: Node, depth: int, evaluate: bool = True) -> Optional[Node]:
+    def reduce_func(self, argument: Node, depth: int, evaluate: bool) -> Optional[Node]:
         for pattern, image in self.special_values.items():
             debug(f"{argument = }, {pattern = }, {image = }", flag='reduce_func')
-            new = argument.morph(pattern, image, evaluate=evaluate)
+            new = argument.morph(pattern, image, evaluate=evaluate, reduce=False)
             if new is not None:
                 # print(f"reducing {new = } from {self = }, {argument = }")
                 return new.reduce(depth-1, evaluate=evaluate)
@@ -97,7 +97,7 @@ class NodeFunction(Function):
     def __eq__(self, other):
         return hash(self) == hash(other)
 
-    def reduce_func(self, argument: Node, depth: int, evaluate: bool = True) -> Optional[Node]:
+    def reduce_func(self, argument: Node, depth: int, evaluate: bool) -> Optional[Node]:
         return self.body.substitute(self.parameter, argument.reduce(depth-1, evaluate=evaluate)).reduce(depth, evaluate=evaluate)
 
     def can_evaluate(self, argument: Node) -> bool:
@@ -166,41 +166,45 @@ class FunctionApplication(Node):
         self._function = function
         self.argument = argument
 
-    def _replace_in_children(self, old_pattern: Node, new_pattern: Node, evaluate: bool) -> Node:
-        return self.change_argument(self.argument.replace(old_pattern, new_pattern, evaluate=evaluate))
+    def _replace_in_children(self, old_pattern: Node, new_pattern: Node, evaluate: bool, reduce: bool) -> Node:
+        return self.change_argument(self.argument.replace(old_pattern, new_pattern, evaluate=evaluate, reduce=reduce))
 
-    def _substitute_in_children(self, pattern: Node, new: Node, evaluate: bool) -> Node:
-        return self.change_argument(self.argument.substitute(pattern, new, evaluate=evaluate))
+    def _substitute_in_children(self, pattern: Node, new: Node, evaluate: bool, reduce: bool) -> Node:
+        return self.change_argument(self.argument.substitute(pattern, new, evaluate=evaluate, reduce=reduce))
 
-    def contains(self, pattern: Node, *, evaluate: bool = True) -> bool:
-        return pattern.matches(self, evaluate=evaluate) is not None or self.argument.contains(pattern, evaluate=evaluate)
+    def contains(self, pattern: Node, *, evaluate: bool = True, reduce: bool = True) -> bool:
+        return pattern.matches(self, evaluate=evaluate, reduce=reduce) is not None or self.argument.contains(pattern, evaluate=evaluate, reduce=reduce)
 
-    def _match_no_reduce(self, value: Node, state: MatchResult, evaluate: bool) -> Optional[MatchResult]:
+    def _match_no_reduce(self, value: Node, state: MatchResult, evaluate: bool, reduce: bool) -> Optional[MatchResult]:
         if not isinstance(value, type(self)):
             return None
 
         if self.function != value.function:
             return None
 
-        return self.argument.matches(value.argument, state, evaluate=evaluate)
+        return self.argument.matches(value.argument, state, evaluate=evaluate, reduce=reduce)
 
-    def matches(self, value: Node, state: MatchResult = None, *, evaluate: bool = True) -> Optional[MatchResult]:
+    def matches(self, value: Node, state: MatchResult = None, *, evaluate: bool = True, reduce: bool = True) -> Optional[MatchResult]:
         if state is None:
             state = MatchResult()
 
-        no_reduce_state = self._match_no_reduce(value, copy.deepcopy(state), evaluate)
+        no_reduce_state = self._match_no_reduce(value, copy.deepcopy(state), evaluate, reduce)
 
-        if no_reduce_state is not None:
+        if no_reduce_state is not None and not (no_reduce_state.weak and reduce):
+            dec_indent()
             return no_reduce_state
 
-        # reduced_self = self.reduce()
+        if not reduce:
+            return None
+
+        reduced_self = self.reduce(evaluate=evaluate)
         reduced_value = value.reduce(evaluate=evaluate)
 
         # if not isinstance(reduced_self, FunctionApplication):
         #     return reduced_self.matches(reduced_value, state)
 
         # noinspection PyProtectedMember
-        return self._match_no_reduce(reduced_value, state, evaluate)
+        return reduced_self._match_no_reduce(reduced_value, state, evaluate, reduce)
 
     def __str__(self):
         if isinstance(self._function, str):
@@ -230,35 +234,38 @@ class FunctionWildcard(Wildcard):
 
         return self.change_argument(self.argument.reduce(depth - 1, evaluate=evaluate))
 
-    def _match_contraints(self, value: Node, evaluate: bool) -> bool:
+    def _match_contraints(self, value: Node, evaluate: bool, reduce: bool) -> bool:
         # TODO: function constraints
         return True
 
-    def matches(self, value: Node, state: MatchResult = None, *, evaluate: bool = True) -> Optional[MatchResult]:
+    def matches(self, value: Node, state: MatchResult = None, *, evaluate: bool = True, reduce: bool = True) -> Optional[MatchResult]:
         if state is None:
             state = MatchResult()
 
         if not isinstance(value, FunctionApplication):
             return None
 
-        maybe_new = self.argument.matches(value.argument, copy.deepcopy(state), evaluate=evaluate)
+        maybe_new = self.argument.matches(value.argument, copy.deepcopy(state), evaluate=evaluate, reduce=reduce)
         if maybe_new:
             state = maybe_new
         else:
-            maybe_new = self.argument.reduce(evaluate=evaluate).matches(value.argument.reduce(), copy.deepcopy(state), evaluate=evaluate)
+            maybe_new = self.argument.reduce(evaluate=evaluate).matches(value.argument.reduce(), copy.deepcopy(state), evaluate=evaluate, reduce=reduce)
             if maybe_new:
                 state = maybe_new
             else:
                 return None
 
         if self.name == '_':
-            return state if self._match_contraints(value, evaluate) else None
+            return state if self._match_contraints(value, evaluate, reduce) else None
 
-        if self.name in state.functions_wildcards.keys() and value.matches(state.functions_wildcards[self.name]) is None:
+        if self.name in state.functions_wildcards.keys() and value.matches(state.functions_wildcards[self.name], evaluate=evaluate, reduce=reduce) is None:
             return None
 
-        if self._match_contraints(value, evaluate):
-            state.functions_wildcards[self.name] = value.function
+        if self._match_contraints(value, evaluate, reduce):
+            try:
+                state.functions_wildcards[self.name] = value.function
+            except MissingContextError:
+                state.functions_wildcards[self.name] = value._function
             return state
 
         return None

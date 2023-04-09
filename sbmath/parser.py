@@ -55,6 +55,7 @@ class Parser(sly.Parser):
     def __init__(self, context: tree.Context = None):
         super().__init__()
         self.context = context
+        self.convert_to_exp = self.context is not None and "exp" in self.context.functions
 
     # Get the token list from the lexer (required)
     tokens = Lexer.tokens
@@ -201,7 +202,11 @@ class Parser(sly.Parser):
 
     @_('expr POW expr')
     def expr(self, p):
-        result = p.expr0 ** p.expr1
+        if self.convert_to_exp and isinstance(p.expr0, tree.Variable) and p.expr0.data == 'e':
+            result = tree.FunctionApplication("exp", p.expr1)
+        else:
+            result = p.expr0 ** p.expr1
+
         result.context = self.context
         return result
 

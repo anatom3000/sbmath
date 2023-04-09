@@ -152,7 +152,7 @@ class Node(ABC):
 
     def __str__(self) -> str:
         # TODO: better string representation (compatible with parsing)
-        return f"Node({self.__class__.__name__})"
+        return f"{self.__class__.__name__}({self.__dict__})"
 
     def __repr__(self) -> str:
         return self.__str__()
@@ -176,7 +176,8 @@ class Node(ABC):
     def approximate(self) -> float:
         pass
 
-    def matches(self, value: Node, state: MatchResult = None, *, evaluate: bool = True, reduce: bool = True) -> Optional[MatchResult]:
+    def matches(self, value: Node, state: MatchResult = None, *, evaluate: bool = True, reduce: bool = True) -> \
+            Optional[MatchResult]:
         if state is None:
             state = MatchResult()
 
@@ -186,7 +187,8 @@ class Node(ABC):
     def _replace_identifiers(self, match_result: MatchResult) -> Node:
         pass
 
-    def morph(self, old_pattern: Node, new_pattern: Node, *, evaluate: bool = True, reduce: bool = True) -> Optional[Node]:
+    def morph(self, old_pattern: Node, new_pattern: Node, *, evaluate: bool = True, reduce: bool = True) -> Optional[
+        Node]:
         m = old_pattern.matches(self, evaluate=evaluate, reduce=reduce)
         if m is None:
             return None
@@ -431,7 +433,8 @@ class AdvancedBinOp(Node, ABC):
                 del remaining_pattern.base_values[index]
             else:
                 for index, pat_value in enumerate(remaining_pattern.inverted_values):
-                    match_result = pat_value.matches(self._invert_value(val_value), new_state, evaluate=evaluate, reduce=reduce)
+                    match_result = pat_value.matches(self._invert_value(val_value), new_state, evaluate=evaluate,
+                                                     reduce=reduce)
                     if match_result is not None:
                         new_state = match_result
                         found = True
@@ -456,7 +459,8 @@ class AdvancedBinOp(Node, ABC):
                 del remaining_pattern.inverted_values[index]
             else:
                 for index, pat_value in enumerate(remaining_pattern.base_values):
-                    match_result = pat_value.matches(self._invert_value(val_value), new_state, evaluate=evaluate, reduce=reduce)
+                    match_result = pat_value.matches(self._invert_value(val_value), new_state, evaluate=evaluate,
+                                                     reduce=reduce)
                     if match_result is not None:
                         new_state = match_result
                         found = True
@@ -676,7 +680,8 @@ class AdvancedBinOp(Node, ABC):
 
         return base_match_table, inverted_match_table
 
-    def _match_wildcards(self, value: AdvancedBinOp, state: MatchResult, evaluate: bool, reduce: bool) -> Optional[MatchResult]:
+    def _match_wildcards(self, value: AdvancedBinOp, state: MatchResult, evaluate: bool, reduce: bool) -> Optional[
+        MatchResult]:
 
         r = self._build_match_tables(value, state, evaluate, reduce)
         if r is None:
@@ -704,7 +709,8 @@ class AdvancedBinOp(Node, ABC):
         inc_indent()
         for index, value in list(base_match_table.keys()):
             if value not in (v for _, v in base_match_table.keys()):
-                debug(f"{value} was not found in {list(v for _, v in base_match_table.keys()) = }, skipping...", flag='match_adv_wc')
+                debug(f"{value} was not found in {list(v for _, v in base_match_table.keys()) = }, skipping...",
+                      flag='match_adv_wc')
                 continue
 
             debug(f"====", flag='match_adv_wc')
@@ -729,7 +735,8 @@ class AdvancedBinOp(Node, ABC):
         inc_indent()
         for index, value in list(inverted_match_table.keys()):
             if value not in (v for _, v in inverted_match_table.keys()):
-                debug(f"{value} was not found in {list(v for _, v in inverted_match_table.keys()) = }, skipping...", flag='match_adv_wc')
+                debug(f"{value} was not found in {list(v for _, v in inverted_match_table.keys()) = }, skipping...",
+                      flag='match_adv_wc')
                 continue
             debug(f"attempting removal of wildcard match {value=} ", flag='match_adv_wc')
             inc_indent()
@@ -765,9 +772,11 @@ class AdvancedBinOp(Node, ABC):
             return None
 
         no_wildcard_self = type(self)(
-            list(filter(lambda x: not isinstance(x, Wildcard) and self.identity.matches(x, evaluate=evaluate, reduce=reduce) is None,
+            list(filter(lambda x: not isinstance(x, Wildcard) and self.identity.matches(x, evaluate=evaluate,
+                                                                                        reduce=reduce) is None,
                         self.base_values)),
-            list(filter(lambda x: not isinstance(x, Wildcard) and self.identity.matches(x, evaluate=evaluate, reduce=reduce) is None,
+            list(filter(lambda x: not isinstance(x, Wildcard) and self.identity.matches(x, evaluate=evaluate,
+                                                                                        reduce=reduce) is None,
                         self.inverted_values))
         )
 
@@ -803,7 +812,8 @@ class AdvancedBinOp(Node, ABC):
 
     # --- END MATCH INTERNAL FUNCTIONS ---
 
-    def matches(self, value: Node, state: MatchResult = None, *, evaluate: bool = True, reduce: bool = True) -> Optional[MatchResult]:
+    def matches(self, value: Node, state: MatchResult = None, *, evaluate: bool = True, reduce: bool = True) -> \
+            Optional[MatchResult]:
 
         debug(f"Matching pattern {self} with value {value}", flag='match')
         inc_indent()
@@ -850,8 +860,10 @@ class AdvancedBinOp(Node, ABC):
 
     def _replace_in_children(self, old_pattern: Node, new_pattern: Node, evaluate: bool, reduce: bool) -> Node:
         return type(self)(
-            base_values=(x.replace(old_pattern, new_pattern, evaluate=evaluate, reduce=reduce) for x in self.base_values),
-            inverted_values=(x.replace(old_pattern, new_pattern, evaluate=evaluate, reduce=reduce) for x in self.inverted_values)
+            base_values=(x.replace(old_pattern, new_pattern, evaluate=evaluate, reduce=reduce) for x in
+                         self.base_values),
+            inverted_values=(x.replace(old_pattern, new_pattern, evaluate=evaluate, reduce=reduce) for x in
+                             self.inverted_values)
         )
 
     def _substitute_in_children(self, pattern: Node, new: Node, evaluate: bool, reduce: bool) -> Node:
@@ -865,7 +877,8 @@ class AdvancedBinOp(Node, ABC):
 
     def contains(self, pattern: Node, *, evaluate: bool = True, reduce: bool = True) -> bool:
         return pattern.matches(self, evaluate=evaluate, reduce=reduce) is not None or any(
-            c.contains(pattern, evaluate=evaluate, reduce=reduce) for c in itertools.chain(self.base_values, self.inverted_values))
+            c.contains(pattern, evaluate=evaluate, reduce=reduce) for c in
+            itertools.chain(self.base_values, self.inverted_values))
 
     def __eq__(self, other):
         if not isinstance(other, type(self)):
@@ -881,17 +894,30 @@ class AdvancedBinOp(Node, ABC):
 
         return True
 
-    def __str__(self):
-        text = '('
+    @staticmethod
+    @abstractmethod
+    def _put_parentheses(value: Node) -> bool:
+        pass
 
-        text += f' {self.base_operation_symbol} '.join(map(str, self.base_values))
+    def __str__(self):
+
+        text = f' {self.base_operation_symbol} '.join(
+            f"({value})" if self._put_parentheses(value)
+            else f"{value}"
+            for value in self.base_values)
 
         if self.inverted_values:
+            if not self.base_values:
+                text += f"{self.identity}"
+
             text += f' {self.inverse_operation_symbol} ' if self.base_values else f'{self.inverse_operation_symbol} '
 
-        text += f' {self.inverse_operation_symbol} '.join(map(str, self.inverted_values))
+        text += f' {self.inverse_operation_symbol} '.join(
+            f"({value})" if self._put_parentheses(value)
+            else f"{value}"
+            for value in self.inverted_values)
 
-        return text + ')'
+        return text
 
     def __hash__(self):
         return hash(str(self))
@@ -1003,7 +1029,8 @@ class BinOp(Node, ABC):
 
         return right_match
 
-    def matches(self, value: Node, state: MatchResult = None, *, evaluate: bool = True, reduce: bool = True) -> Optional[MatchResult]:
+    def matches(self, value: Node, state: MatchResult = None, *, evaluate: bool = True, reduce: bool = True) -> \
+            Optional[MatchResult]:
         if state is None:
             state = MatchResult()
 
@@ -1074,8 +1101,16 @@ class BinOp(Node, ABC):
     def approximate(self) -> float:
         return self.approximator(self.left.approximate(), self.right.approximate())
 
+    @staticmethod
+    @abstractmethod
+    def _put_parentheses(value: Node) -> bool:
+        pass
+
     def __str__(self):
-        return f"{self.left} {self.name} {self.right}"
+        left = f"({self.left})" if self._put_parentheses(self.left) else f"{self.left}"
+        right = f"({self.right})" if self._put_parentheses(self.right) else f"{self.right}"
+
+        return f"{left} {self.name} {right}"
 
     def __hash__(self):
         return hash(str(self))
@@ -1162,14 +1197,16 @@ class Wildcard(Node):
 
         return True
 
-    def matches(self, value: Node, state: MatchResult = None, *, evaluate: bool = True, reduce: bool = True) -> Optional[MatchResult]:
+    def matches(self, value: Node, state: MatchResult = None, *, evaluate: bool = True, reduce: bool = True) -> \
+            Optional[MatchResult]:
         if state is None:
             state = MatchResult()
 
         if self.name == '_':
             return state if self._match_contraints(value, evaluate, reduce) else None
 
-        if self.name in state.wildcards.keys() and value.matches(state.wildcards[self.name], evaluate=evaluate, reduce=reduce) is None:
+        if self.name in state.wildcards.keys() and value.matches(state.wildcards[self.name], evaluate=evaluate,
+                                                                 reduce=reduce) is None:
             return None
 
         if self._match_contraints(value, evaluate, reduce):
@@ -1294,6 +1331,11 @@ class AddAndSub(AdvancedBinOp):
 
         return result
 
+    @staticmethod
+    def _put_parentheses(value: Node) -> bool:
+        # addition/substraction always have the lowest precendence
+        return False
+
     def __neg__(self):
         result = AddAndSub(self.inverted_values, self.base_values)
         result.context = self.context
@@ -1410,6 +1452,10 @@ class MulAndDiv(AdvancedBinOp):
 
         return result
 
+    @staticmethod
+    def _put_parentheses(value: Node) -> bool:
+        return isinstance(value, AddAndSub)
+
     def __neg__(self):
         result = MulAndDiv(self.base_values + [Value(-1.0)], self.inverted_values)
         result.context = self.context
@@ -1480,6 +1526,10 @@ class Pow(BinOp):
     @staticmethod
     def approximator(left: float, right: float) -> float:
         return left ** right
+
+    @staticmethod
+    def _put_parentheses(value: Node) -> bool:
+        return isinstance(value, AddAndSub) or isinstance(value, MulAndDiv)
 
 
 @dataclass

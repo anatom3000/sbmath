@@ -1,1 +1,1 @@
-from sbmath.tree.functions.base import *
+from sbmath.tree.functions.core import *

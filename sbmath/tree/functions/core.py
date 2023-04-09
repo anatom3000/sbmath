@@ -4,7 +4,7 @@ import copy
 from abc import ABC, abstractmethod
 from typing import Optional
 
-from sbmath.tree.base import Node, Variable, MatchResult, Value, Wildcard
+from sbmath.tree.core import Node, Variable, MatchResult, Value, Wildcard
 from sbmath.tree.context import MissingContextError
 from sbmath._utils import debug, inc_indent, dec_indent
 

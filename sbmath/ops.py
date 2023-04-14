@@ -13,6 +13,20 @@ _prod_pat: Node = parse("[u]*[v]")
 _div_pat: Node = parse("[u]/[v]")
 _func_pat: Node = parse("[func]([arg])")
 
+_prod_sum_pat = parse("[k]*([a]+[b])")
+_sum_prod_pat = parse("[k]*[a]+[k]*[b]")
+_binom_pat = parse("([a]+[b])^[n]")
+
+_common_factor_pat = parse("[k]*[a, eval=1]+[k]*[b, eval=1]+[c]")
+_no_common_factor_pat = parse("[k]*([a]+[b])+[c]")
+
+_common_factor2_pat = parse("[k]*[a, eval=1]+[k]*[b, eval=1]")
+_no_common_factor2_pat = parse("[k]*([a]+[b])")
+
+_common_factor1_pat = parse("[k]*[a, eval=1]+[k]")
+_no_common_factor1_pat = parse("[k]*([a]+1)")
+
+
 
 _derivatives: dict[Function, Function] = {
     std.functions["abs"]: Function.from_expression(parse("abs(x)/x"), parse("x")),
@@ -117,11 +131,6 @@ def diff(expression: Node, variable: Variable) -> Node:
     return _diff_no_reduce(expression, variable).reduce()
 
 
-_prod_sum_pat = parse("[k]*([a]+[b])")
-_sum_prod_pat = parse("[k]*[a]+[k]*[b]")
-_binom_pat = parse("([a]+[b])^[n]")
-
-
 def expand(expression: Node) -> Node:
     m = _binom_pat.matches(expression)
     if m is not None and isinstance(m.wildcards["n"], Value) and m.wildcards["n"].data.is_integer():
@@ -133,3 +142,12 @@ def expand(expression: Node) -> Node:
 
     # the pattern matching is powerful enough to support more complex expansions
     return expression.replace(_prod_sum_pat, _sum_prod_pat)
+
+
+def simplify(expression: Node):
+    expression = expression.reduce()
+    expression = expression.replace(_common_factor_pat, _no_common_factor_pat)
+    expression = expression.replace(_common_factor2_pat, _no_common_factor2_pat)
+    expression = expression.replace(_common_factor1_pat, _no_common_factor1_pat)
+
+    return expression.reduce()

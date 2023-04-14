@@ -7,10 +7,10 @@ from typing import TypeVar
 DEBUG = False
 DEBUG_FLAGS = (
     "repl",
-    # "match",
-    # "match_adv_wc",
+    "match",
+    "match_adv_wc",
     # "match_wc",
-    "reduce",
+    # "reduce",
     # "reduce_func",
     # "diff",
     # "misc"
@@ -77,7 +77,7 @@ class BiMultiDict:
             for k, v in source.items():
                 self.add(k, v)
 
-    def add(self, key, value) -> None:
+    def add(self, key: K, value: V) -> None:
         key_hash = hash(key)
         value_hash = hash(value)
 
@@ -87,21 +87,33 @@ class BiMultiDict:
         self._keys_to_values[key_hash].append(value_hash)
         self._values_to_keys[value_hash].append(key_hash)
 
-    def get_from_key(self, key) -> list[V]:
+    def add_key(self, key: K) -> None:
+        key_hash = hash(key)
+        self._data[key_hash] = key
+
+        _ = self._keys_to_values[key_hash]
+
+    def add_value(self, value: V) -> None:
+        value_hash = hash(value)
+        self._data[value_hash] = value
+
+        _ = self._values_to_keys[value_hash]
+
+    def get_from_key(self, key: K) -> list[V]:
         h = hash(key)
         if h not in self._keys_to_values.keys():
             return []
 
         return [self._data[h] for h in self._keys_to_values[h]]
 
-    def get_from_value(self, value) -> list[K]:
+    def get_from_value(self, value: V) -> list[K]:
         h = hash(value)
         if h not in self._values_to_keys.keys():
             return []
 
         return [self._data[h] for h in self._values_to_keys[h]]
 
-    def try_remove_key(self, key) -> bool:
+    def try_remove_key(self, key: K) -> bool:
         h = hash(key)
         if h not in self._keys_to_values.keys():
             return False
@@ -114,7 +126,7 @@ class BiMultiDict:
 
         return True
 
-    def remove_key(self, key) -> None:
+    def remove_key(self, key: K) -> None:
         h = hash(key)
         if h not in self._keys_to_values.keys():
             raise KeyError(f"unknown key {key}")
@@ -125,7 +137,7 @@ class BiMultiDict:
             if h in self._values_to_keys[v]:
                 self._values_to_keys[v].remove(h)
 
-    def try_remove_value(self, value) -> bool:
+    def try_remove_value(self, value: V) -> bool:
         h = hash(value)
         if h not in self._values_to_keys.keys():
             return False
@@ -138,7 +150,7 @@ class BiMultiDict:
 
         return True
 
-    def remove_value(self, value) -> None:
+    def remove_value(self, value: V) -> None:
         h = hash(value)
         if h not in self._values_to_keys.keys():
             raise KeyError(f"unknown value {value}")
@@ -149,7 +161,7 @@ class BiMultiDict:
             if h in self._keys_to_values[v]:
                 self._keys_to_values[v].remove(h)
 
-    def has_relation(self, key, value) -> bool:
+    def has_relation(self, key: K, value: V) -> bool:
         hk = hash(key)
         hv = hash(value)
 
@@ -160,7 +172,7 @@ class BiMultiDict:
 
         return hv in self._keys_to_values[hk] and hk in self._values_to_keys[hv]
 
-    def remove_relationship(self, key, value) -> None:
+    def remove_relationship(self, key: K, value: V) -> None:
         hk = hash(key)
         hv = hash(value)
 
@@ -175,13 +187,13 @@ class BiMultiDict:
         self._keys_to_values[hk].remove(hv)
         self._values_to_keys[hv].remove(hk)
 
-    def __getitem__(self, item) -> list[V]:
+    def __getitem__(self, item: K) -> list[V]:
         return self.get_from_key(item)
 
-    def __setitem__(self, key, value):
+    def __setitem__(self, key: K, value: V):
         return self.add(key, value)
 
-    def __delitem__(self, key):
+    def __delitem__(self, key: K):
         return self.remove_key(key)
 
     def keys(self) -> Iterable[K]:

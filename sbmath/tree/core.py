@@ -151,7 +151,6 @@ class Node(ABC):
             return NotImplemented
 
     def __str__(self) -> str:
-        # TODO: better string representation (compatible with parsing)
         return f"{self.__class__.__name__}({self.__dict__})"
 
     def __repr__(self) -> str:
@@ -372,8 +371,6 @@ class AdvancedBinOp(Node, ABC):
                 key = self._invert_value(key)
                 value *= -1
 
-            # TODO: fix ()
-
             if value == 1:
                 base_values.append(key)
             elif value == -1:
@@ -546,6 +543,7 @@ class AdvancedBinOp(Node, ABC):
 
             base_match_table.remove_key(base_similars[0])
             base_match_table.remove_value(wildcard)
+            inverted_match_table.try_remove_value(wildcard)
 
             debug(f"2) {state = }", flag='match_adv_wc')
 
@@ -563,6 +561,7 @@ class AdvancedBinOp(Node, ABC):
 
             inverted_match_table.remove_key(inverted_similars[0])
             inverted_match_table.remove_value(wildcard)
+            base_match_table.try_remove_value(wildcard)
 
             debug(f"2) {state = }", flag='match_adv_wc')
 
@@ -587,6 +586,9 @@ class AdvancedBinOp(Node, ABC):
 
         for s in inverted_similars:
             inverted_match_table.remove_key(s)
+
+        base_match_table.try_remove_value(wildcard)
+        inverted_match_table.try_remove_value(wildcard)
 
         return base_match_table, inverted_match_table, state
 
@@ -636,6 +638,9 @@ class AdvancedBinOp(Node, ABC):
 
     def _build_match_tables(self, value: AdvancedBinOp, state: MatchResult, evaluate: bool, reduce: bool) \
             -> Optional[tuple[_utils.BiMultiDict, _utils.BiMultiDict]]:
+
+        remaining_wildcards = set(self.base_values + self.inverted_values)
+
         base_match_table = _utils.BiMultiDict()
         for index, val in enumerate(value.base_values):
             found_one = False
@@ -644,6 +649,7 @@ class AdvancedBinOp(Node, ABC):
                 if r:
                     found_one = True
                     base_match_table.add((index, val), wildcard)
+                    remaining_wildcards.discard(wildcard)
 
             if not found_one:
                 for wildcard in self.inverted_values:
@@ -653,6 +659,7 @@ class AdvancedBinOp(Node, ABC):
                         found_one = True
                         state.weak = True
                         base_match_table.add((-index, invval), wildcard)
+                        remaining_wildcards.discard(wildcard)
 
             if not found_one:
                 return None
@@ -665,6 +672,7 @@ class AdvancedBinOp(Node, ABC):
                 if r:
                     found_one = True
                     inverted_match_table.add((index, val), wildcard)
+                    remaining_wildcards.discard(wildcard)
 
             if not found_one:
                 for wildcard in self.base_values:
@@ -674,14 +682,19 @@ class AdvancedBinOp(Node, ABC):
                         found_one = True
                         state.weak = True
                         inverted_match_table.add((-index, invval), wildcard)
+                        remaining_wildcards.discard(wildcard)
 
             if not found_one:
                 return None
 
+        if len(remaining_wildcards) != 0:
+            debug(f"{remaining_wildcards = }", flag='match_adv_wc')
+            return None
+
         return base_match_table, inverted_match_table
 
-    def _match_wildcards(self, value: AdvancedBinOp, state: MatchResult, evaluate: bool, reduce: bool) -> Optional[
-        MatchResult]:
+    def _match_wildcards(self, value: AdvancedBinOp, state: MatchResult, evaluate: bool, reduce: bool) \
+            -> Optional[MatchResult]:
 
         r = self._build_match_tables(value, state, evaluate, reduce)
         if r is None:
@@ -757,7 +770,9 @@ class AdvancedBinOp(Node, ABC):
             base_match_table, inverted_match_table, state = r
         dec_indent()
 
-        if len(list(base_match_table.keys())) != 0 or len(list(inverted_match_table.keys())) != 0:
+        debug(f"{base_match_table = }, {inverted_match_table = }", flag='match_adv_wc')
+
+        if len(list(base_match_table.values())) != 0 or len(list(inverted_match_table.values())) != 0:
             return None
 
         return state
@@ -772,11 +787,11 @@ class AdvancedBinOp(Node, ABC):
             return None
 
         no_wildcard_self = type(self)(
-            list(filter(lambda x: not isinstance(x, Wildcard) and self.identity.matches(x, evaluate=evaluate,
-                                                                                        reduce=reduce) is None,
+            list(filter(lambda x: (not x.contains(_wildcard_wildcard))
+                                  and self.identity.matches(x, evaluate=evaluate, reduce=reduce) is None,
                         self.base_values)),
-            list(filter(lambda x: not isinstance(x, Wildcard) and self.identity.matches(x, evaluate=evaluate,
-                                                                                        reduce=reduce) is None,
+            list(filter(lambda x: (not x.contains(_wildcard_wildcard))
+                                  and self.identity.matches(x, evaluate=evaluate, reduce=reduce) is None,
                         self.inverted_values))
         )
 
@@ -798,8 +813,8 @@ class AdvancedBinOp(Node, ABC):
             return None
 
         wildcard_self = type(self)(
-            list(filter(lambda x: isinstance(x, Wildcard), self.base_values)),
-            list(filter(lambda x: isinstance(x, Wildcard), self.inverted_values))
+            list(filter(lambda x: x.contains(_wildcard_wildcard), self.base_values)),
+            list(filter(lambda x: x.contains(_wildcard_wildcard), self.inverted_values))
         )
 
         debug(f"{wildcard_self = }", flag='match')
@@ -1195,6 +1210,12 @@ class Wildcard(Node):
             if not value.contains(self.constraints["constant_with"], evaluate=evaluate, reduce=reduce):
                 return False
 
+        if "wildcard" in self.constraints.keys():
+            if self.constraints["wildcard"] == Value(1.0) and not isinstance(value, Wildcard):
+                return False
+            if self.constraints["wildcard"] == Value(0.0) and isinstance(value, Wildcard):
+                return False
+
         return True
 
     def matches(self, value: Node, state: MatchResult = None, *, evaluate: bool = True, reduce: bool = True) -> \
@@ -1265,6 +1286,9 @@ class Wildcard(Node):
         self.constraints = constraints
 
         self._context = None
+
+
+_wildcard_wildcard = Wildcard('_', wildcard=Value(1))
 
 
 class AddAndSub(AdvancedBinOp):

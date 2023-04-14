@@ -6,7 +6,7 @@ import traceback
 import sbmath
 from sbmath import _utils, parser, std
 from sbmath.tree import Context, NodeFunction, Value
-from sbmath.ops import diff, expand
+from sbmath.ops import diff, expand, simplify
 
 from sbmath._utils import debug
 
@@ -24,6 +24,7 @@ operations = [
     'eval',
     'reduce',
     'expand',
+    'simplify',
     'match',
     'subst',
     'replace',
@@ -229,6 +230,15 @@ def repl():
                     continue
                 result = expand(expr)
 
+            elif op == 'simplify':
+                try:
+                    expr = parse(input(f"{LIGHT_GRAY}Expr: {END}"))
+                    debug(f" => {expr}", flag='repl')
+                except (EOFError, KeyboardInterrupt):
+                    break
+                if expr is None:
+                    continue
+                result = simplify(expr)
 
             elif op == 'replace':
                 try:
@@ -332,5 +342,5 @@ def repl():
             print(f"{RED}An error occured during execution of operation:")
             print(f"{traceback.format_exc()}{END}")
             continue
-
+        _utils.DEBUG_INDENT = 0
         print(f" => {YELLOW}{result}{END}")

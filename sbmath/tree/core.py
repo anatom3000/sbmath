@@ -1535,6 +1535,15 @@ class MulAndDiv(AdvancedBinOp):
         else:
             return NotImplemented
 
+    def __str__(self):
+        if len(self.base_values) == 2:
+            if self.base_values[0] == Value(-1.0):
+                return f"-{self.base_values[1]}"
+            if self.base_values[1] == Value(-1.0):
+                return f"-{self.base_values[0]}"
+
+        return super().__str__()
+
 
 class Pow(BinOp):
     name = '^'

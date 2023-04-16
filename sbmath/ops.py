@@ -26,14 +26,14 @@ _no_common_factor2_pat = parse("[k]*([a]+[b])")
 _common_factor1_pat = parse("[k]*[a, eval=1]+[k]")
 _no_common_factor1_pat = parse("[k]*([a]+1)")
 
-
+_x = parse("x")
 
 _derivatives: dict[Function, Function] = {
-    std.functions["abs"]: Function.from_expression(parse("abs(x)/x"), parse("x")),
-    std.functions["sqrt"]: Function.from_expression(parse("1 / ( 2*sqrt(x) )"), parse("x")),
+    std.functions["abs"]: Function.from_expression(parse("abs(x)/x"), _x),
+    std.functions["sqrt"]: Function.from_expression(parse("1 / ( 2*sqrt(x) )"), _x),
     std.functions["exp"]: std.functions["exp"],
-    std.functions["ln"]: Function.from_expression(parse("1/x"), parse("x")),
-    std.functions["log"]: Function.from_expression(parse("1/(ln(10)*x)"), parse("x")),
+    std.functions["ln"]: Function.from_expression(parse("1/x"), _x),
+    std.functions["log"]: Function.from_expression(parse("1/(ln(10)*x)"), _x),
 }
 
 

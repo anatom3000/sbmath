@@ -13,18 +13,6 @@ _prod_pat: Node = parse("[u]*[v]")
 _div_pat: Node = parse("[u]/[v]")
 _func_pat: Node = parse("[func]([arg])")
 
-_prod_sum_pat = parse("[k]*([a]+[b])")
-_sum_prod_pat = parse("[k]*[a]+[k]*[b]")
-_binom_pat = parse("([a]+[b])^[n]")
-
-_common_factor_pat = parse("[k]*[a, eval=1]+[k]*[b, eval=1]+[c]")
-_no_common_factor_pat = parse("[k]*([a]+[b])+[c]")
-
-_common_factor2_pat = parse("[k]*[a, eval=1]+[k]*[b, eval=1]")
-_no_common_factor2_pat = parse("[k]*([a]+[b])")
-
-_common_factor1_pat = parse("[k]*[a, eval=1]+[k]")
-_no_common_factor1_pat = parse("[k]*([a]+1)")
 
 _x = parse("x")
 
@@ -131,24 +119,3 @@ def _diff_no_reduce(expression: Node, variable: Variable) -> Node:
 def diff(expression: Node, variable: Variable) -> Node:
     return _diff_no_reduce(expression, variable).reduce()
 
-
-def expand(expression: Node) -> Node:
-    m = _binom_pat.matches(expression)
-    if m is not None and isinstance(m.wildcards["n"], Value) and m.wildcards["n"].data.is_integer():
-        n = int(m.wildcards["n"].data)
-        a = m.wildcards["a"]
-        b = m.wildcards["b"]
-        # binomial formula
-        expression = AddAndSub.add(*(math.comb(n, k) * a ** (n-k) * b ** k for k in range(n+1))).reduce()
-
-    # the pattern matching is powerful enough to support more complex expansions
-    return expression.replace(_prod_sum_pat, _sum_prod_pat)
-
-
-def simplify(expression: Node):
-    expression = expression.reduce()
-    expression = expression.replace(_common_factor_pat, _no_common_factor_pat)
-    expression = expression.replace(_common_factor2_pat, _no_common_factor2_pat)
-    expression = expression.replace(_common_factor1_pat, _no_common_factor1_pat)
-
-    return expression.reduce()

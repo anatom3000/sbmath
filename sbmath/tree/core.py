@@ -18,7 +18,7 @@ from dataclasses import dataclass, field
 from sbmath.tree.context import MissingContextError
 from sbmath import _utils
 
-# debug functions
+# debug function
 from sbmath._utils import debug, inc_indent, dec_indent
 
 
@@ -387,8 +387,8 @@ class AdvancedBinOp(Node, ABC):
 
             if evaluated != self.identity:
                 if isinstance(evaluated, type(self)):
-                    base_values.append(evaluated.base_values)
-                    inverted_values.append(evaluated.inverted_values)
+                    base_values.extend(val for val in evaluated.base_values if val != self.identity)
+                    inverted_values.extend(val for val in evaluated.inverted_values if val != self.identity)
                 elif self._should_invert_value(evaluated):
                     inverted_values.append(self._invert_value(evaluated))
                 else:

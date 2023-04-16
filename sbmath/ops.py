@@ -116,10 +116,12 @@ def _diff_no_reduce(expression: Node, variable: Variable) -> Node:
             return result
         if func in _derivatives.keys():
             result = (_diff_no_reduce(arg, variable) * _derivatives[func](arg).reduce(depth=1))
+            print(f"func pat {result}")
+            result = result.reduce(depth=1)
             result.context = expression.context
             return result
 
-    # TODO: functions with multiple parameters
+    # TODO: function with multiple parameters
     # TODO: function operating on raw nodes in expression tree
     result = Wildcard("diff", expr=expression, var=variable)
     result.context = expression.context

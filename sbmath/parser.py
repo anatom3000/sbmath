@@ -64,7 +64,7 @@ class Parser(sly.Parser):
 
     precedence = (
         ('left', PLUS, MINUS),
-        ('right', TIMES, DIVIDE, IMPMUL),
+        ('left', TIMES, DIVIDE, IMPMUL),
         ('right', UMINUS),
         ('right', POW),
     )

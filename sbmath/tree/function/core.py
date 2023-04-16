@@ -44,7 +44,7 @@ class Function(ABC):
     @classmethod
     def from_expression(cls, body: expression, parameter: Node, name: str = None) -> Function:
         if name is None:
-            name = f"_anonymous_{hash((parameter, body))}"
+            name = f"_anonymous_{abs(hash((parameter, body)))}"
 
         return NodeFunction(name, parameter, body)
 

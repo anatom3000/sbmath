@@ -3,7 +3,7 @@ import math
 from dataclasses import FrozenInstanceError
 
 from sbmath.tree.context import Context
-from sbmath.tree.functions import Function, PythonFunction
+from sbmath.tree.function import Function, PythonFunction
 from sbmath.parser import parse as _parse
 import sbmath.parser
 

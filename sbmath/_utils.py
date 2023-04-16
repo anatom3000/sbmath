@@ -6,13 +6,13 @@ from typing import TypeVar
 
 DEBUG = False
 DEBUG_FLAGS = (
-    "repl",
-    "match",
-    "match_adv_wc",
+    # "repl",
+    # "match",
+    # "match_adv_wc",
     # "match_wc",
     # "reduce",
     # "reduce_func",
-    # "diff",
+    "diff",
     # "misc"
 )
 DEBUG_INDENT = 0

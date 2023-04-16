@@ -43,7 +43,7 @@ class Lexer(sly.Lexer):
     LBRACK = r'\['
     RBRACK = r'\]'
 
-    ARG_ASSIGN = r'='
+    ARG_ASSIGN = r':'
     ARG_SEP = r','
 
 

@@ -993,8 +993,7 @@ class BinOp(Node, ABC):
         if not isinstance(other, type(self)):
             return NotImplemented
 
-        return self.left == other.left and self.right == other.right \
-            or self.left == other.right and self.right == other.left
+        return self.left == other.left and self.right == other.right
 
     def reduce(self, depth=-1, *, evaluate: bool = True) -> Node:
         if depth == 0:
@@ -1536,7 +1535,7 @@ class MulAndDiv(AdvancedBinOp):
             return NotImplemented
 
     def __str__(self):
-        if len(self.base_values) == 2:
+        if (not self.inverted_values) and len(self.base_values) == 2:
             if self.base_values[0] == Value(-1.0):
                 return f"-{self.base_values[1]}"
             if self.base_values[1] == Value(-1.0):

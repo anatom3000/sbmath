@@ -116,7 +116,6 @@ def _diff_no_reduce(expression: Node, variable: Variable) -> Node:
             return result
         if func in _derivatives.keys():
             result = (_diff_no_reduce(arg, variable) * _derivatives[func](arg).reduce(depth=1))
-            print(f"func pat {result}")
             result = result.reduce(depth=1)
             result.context = expression.context
             return result

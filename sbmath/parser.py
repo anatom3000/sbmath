@@ -17,7 +17,8 @@ class Lexer(sly.Lexer):
         TIMES, DIVIDE,
         LPAREN, RPAREN,
         LBRACK, RBRACK,
-        ARG_SEP, ARG_ASSIGN
+        ARG_SEP, ARG_ASSIGN,
+        EQUALS
     }
 
     # String containing ignored characters between tokens
@@ -42,9 +43,10 @@ class Lexer(sly.Lexer):
 
     LBRACK = r'\['
     RBRACK = r'\]'
-
     ARG_ASSIGN = r':'
     ARG_SEP = r','
+
+    EQUALS = r'='
 
 
 _ = lambda _: (lambda _: None)  # fake value to make mypy happy
@@ -63,6 +65,7 @@ class Parser(sly.Parser):
     # debugfile = 'parser.out'
 
     precedence = (
+        ('nonassoc', EQUALS),
         ('left', PLUS, MINUS),
         ('left', TIMES, DIVIDE, IMPMUL),
         ('right', UMINUS),
@@ -206,6 +209,13 @@ class Parser(sly.Parser):
             result = tree.FunctionApplication("exp", p.expr1)
         else:
             result = p.expr0 ** p.expr1
+
+        result.context = self.context
+        return result
+
+    @_('expr EQUALS expr')
+    def expr(self, p):
+        result = tree.Equality(p.expr0, p.expr1)
 
         result.context = self.context
         return result

@@ -1206,7 +1206,7 @@ class Wildcard(Node):
                 return False
 
         if "variable_with" in self.constraints.keys():
-            if not value.contains(self.constraints["constant_with"], evaluate=evaluate, reduce=reduce):
+            if not value.contains(self.constraints["variable_with"], evaluate=evaluate, reduce=reduce):
                 return False
 
         if "wildcard" in self.constraints.keys():
@@ -1263,7 +1263,7 @@ class Wildcard(Node):
         text = f"[{self.name}, "
 
         for k, v in self.constraints.items():
-            text += f"{k}={v}, "
+            text += f"{k}: {v}, "
 
         text = text[:-2] + "]"
 

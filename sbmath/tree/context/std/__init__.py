@@ -3,6 +3,7 @@ import math
 from dataclasses import FrozenInstanceError
 
 from sbmath.tree.context import Context
+from sbmath.tree.context.std.sqrt import FunctionSqrt
 from sbmath.tree.function import Function, PythonFunction
 from sbmath.parser import parse as _parse
 import sbmath.parser
@@ -47,11 +48,8 @@ _std.add_function(
     PythonFunction(abs)
 )
 
-_std.add_function(
-    PythonFunction(math.sqrt, {
-        parse("[arg]^2"): parse("[arg]")
-    })
-)
+_std.add_function(FunctionSqrt(parse))
+
 _std.add_function(
     PythonFunction(math.exp, {
         parse(0): parse(1),

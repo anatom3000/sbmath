@@ -160,7 +160,9 @@ class FunctionApplication(Node):
         return self.change_argument(self.argument._replace_identifiers(match_result))
 
     def change_argument(self, new_argument: Node):
-        return type(self)(self._function, new_argument)
+        new = type(self)(self._function, new_argument)
+        new.context = self.context
+        return new
 
     def __init__(self, function: str | Function, argument: Node):
         self._function = function

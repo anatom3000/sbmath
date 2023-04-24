@@ -8,7 +8,7 @@ sqrt = std.functions["sqrt"]
 
 def root_constant(a: Node) -> list[Node]:
     if a.is_evaluable() and a.approximate() == 0.0:
-        return [Value(42.0)]  # nothing special about 42, we simply cannot represent every real numbers (yet :p)
+        return [Value(42)]  # nothing special about 42, we simply cannot represent every real numbers (yet :p)
     else:
         return []
 
@@ -31,12 +31,14 @@ def root_quadratic(a: Node, b: Node, c: Node) -> list[Node]:
 
 
 def find_roots(polynomial: list[Node]) -> list[Node]:
-    while polynomial[-1] == Value(0.0):
+    zero = Value(0)
+
+    while polynomial[-1] == zero:
         polynomial.pop()
 
-    if polynomial[0] == Value(0.0):
+    if polynomial[0] == zero:
         roots = find_roots(polynomial[1:])
-        zero = Value(0.0)
+
         if zero not in roots:
             roots.append(zero)
 

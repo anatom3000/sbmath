@@ -16,7 +16,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 
 from sbmath.tree.context import MissingContextError
-from sbmath import _utils
+from sbmath import _utils, integers
 
 # debug function
 from sbmath._utils import debug, inc_indent, dec_indent
@@ -32,7 +32,7 @@ class Node(ABC):
 
     def __add__(self, other) -> Node:
         if isinstance(other, Real):
-            other = Value(float(other))
+            other = Node.from_float(float(other))
             other.context = self.context
             return AddAndSub.add(self, context)
         elif isinstance(other, Node):
@@ -44,7 +44,7 @@ class Node(ABC):
 
     def __radd__(self, other) -> Node:
         if isinstance(other, Real):
-            result = AddAndSub.add(Value(float(other)), self)
+            result = AddAndSub.add(Node.from_float(float(other)), self)
             result.context = self.context
             return result
         elif isinstance(other, Node):
@@ -56,7 +56,7 @@ class Node(ABC):
 
     def __sub__(self, other) -> Node:
         if isinstance(other, Real):
-            result = AddAndSub.sub(self, Value(float(other)))
+            result = AddAndSub.sub(self, Node.from_float(float(other)))
             result.context = self.context
             return result
         elif isinstance(other, Node):
@@ -68,7 +68,7 @@ class Node(ABC):
 
     def __rsub__(self, other) -> Node:
         if isinstance(other, Real):
-            result = AddAndSub.sub(Value(float(other)), self)
+            result = AddAndSub.sub(Node.from_float(float(other)), self)
             result.context = self.context
             return result
         elif isinstance(other, Node):
@@ -80,7 +80,7 @@ class Node(ABC):
 
     def __mul__(self, other) -> Node:
         if isinstance(other, Real):
-            result = MulAndDiv.mul(self, Value(float(other)))
+            result = MulAndDiv.mul(self, Node.from_float(float(other)))
             result.context = self.context
             return result
         elif isinstance(other, Node):
@@ -92,7 +92,7 @@ class Node(ABC):
 
     def __rmul__(self, other) -> Node:
         if isinstance(other, Real):
-            result = MulAndDiv.mul(Value(float(other)), self)
+            result = MulAndDiv.mul(Node.from_float(float(other)), self)
             result.context = self.context
             return result
         elif isinstance(other, Node):
@@ -104,7 +104,7 @@ class Node(ABC):
 
     def __truediv__(self, other) -> Node:
         if isinstance(other, Real):
-            result = MulAndDiv.div(self, Value(float(other)))
+            result = MulAndDiv.div(self, Node.from_float(float(other)))
             result.context = self.context
             return result
         elif isinstance(other, Node):
@@ -116,7 +116,7 @@ class Node(ABC):
 
     def __rtruediv__(self, other) -> Node:
         if isinstance(other, Real):
-            result = MulAndDiv.div(Value(float(other)), self)
+            result = MulAndDiv.div(Node.from_float(float(other)), self)
             result.context = self.context
             return result
         elif isinstance(other, Node):
@@ -128,7 +128,7 @@ class Node(ABC):
 
     def __pow__(self, other) -> Node:
         if isinstance(other, Real):
-            result = Pow(self, Value(float(other)))
+            result = Pow(self, Node.from_float(float(other)))
             result.context = self.context
             return result
         elif isinstance(other, Node):
@@ -140,7 +140,7 @@ class Node(ABC):
 
     def __rpow__(self, other) -> Node:
         if isinstance(other, Real):
-            result = Pow(Value(float(other)), self)
+            result = Pow(Node.from_float(float(other)), self)
             result.context = self.context
             return result
         elif isinstance(other, Node):
@@ -158,6 +158,14 @@ class Node(ABC):
 
     def __hash__(self):
         return hash(str(self))
+
+    @classmethod
+    def from_float(cls, x: float):
+        num, denom = integers.float_to_fraction(x)
+        if denom == 1:
+            return Value(num)
+
+        return MulAndDiv.div(Value(num), Value(denom))
 
     @abstractmethod
     def __eq__(self, other: Node) -> bool:
@@ -186,8 +194,8 @@ class Node(ABC):
     def _replace_identifiers(self, match_result: MatchResult) -> Node:
         pass
 
-    def morph(self, old_pattern: Node, new_pattern: Node, *, evaluate: bool = True, reduce: bool = True) -> Optional[
-        Node]:
+    def morph(self, old_pattern: Node, new_pattern: Node, *, evaluate: bool = True, reduce: bool = True) \
+            -> Optional[Node]:
         m = old_pattern.matches(self, evaluate=evaluate, reduce=reduce)
         if m is None:
             return None
@@ -1017,7 +1025,7 @@ class BinOp(Node, ABC):
                     return reduced_left
         else:
             if isinstance(reduced_left, Value) and isinstance(reduced_right, Value):
-                return Value(self.approximator(reduced_left.data, reduced_right.data))
+                return Node.from_float(self.approximator(reduced_left.data, reduced_right.data))
 
             if reduced_right == self.identity:
                 return reduced_left
@@ -1131,13 +1139,12 @@ class BinOp(Node, ABC):
 
 
 class Value(Leaf):
+    data: int
+
     def __neg__(self):
         return Value(-self.data)
 
     def __str__(self):
-        if self.data % 1 == 0:
-            return str(int(self.data))
-
         return str(self.data)
 
     def is_evaluable(self) -> bool:
@@ -1196,9 +1203,9 @@ class Wildcard(Node):
     def _match_contraints(self, value: Node, evaluate: bool, reduce: bool) -> bool:
 
         if "eval" in self.constraints.keys():
-            if self.constraints["eval"] == Value(1.0) and not value.is_evaluable():
+            if self.constraints["eval"] == Value(1) and not value.is_evaluable():
                 return False
-            if self.constraints["eval"] == Value(0.0) and value.is_evaluable():
+            if self.constraints["eval"] == Value(0) and value.is_evaluable():
                 return False
 
         if "constant_with" in self.constraints.keys():
@@ -1210,9 +1217,9 @@ class Wildcard(Node):
                 return False
 
         if "wildcard" in self.constraints.keys():
-            if self.constraints["wildcard"] == Value(1.0) and not isinstance(value, Wildcard):
+            if self.constraints["wildcard"] == Value(1) and not isinstance(value, Wildcard):
                 return False
-            if self.constraints["wildcard"] == Value(0.0) and isinstance(value, Wildcard):
+            if self.constraints["wildcard"] == Value(0) and isinstance(value, Wildcard):
                 return False
 
         return True
@@ -1295,7 +1302,7 @@ class AddAndSub(AdvancedBinOp):
     inverse_operation_symbol = '-'
     constant_term_last = True
 
-    identity = Value(0.0)
+    identity = Value(0)
 
     @staticmethod
     def _invert_value(value: Node) -> Node:
@@ -1303,7 +1310,7 @@ class AddAndSub(AdvancedBinOp):
 
     @staticmethod
     def _repeat_value(value: Node, times: int) -> Node:
-        return MulAndDiv.mul(Value(times), value)
+        return MulAndDiv.mul(Node.from_float(times), value)
 
     @staticmethod
     def _should_invert_value(value: Node) -> bool:
@@ -1327,8 +1334,8 @@ class AddAndSub(AdvancedBinOp):
             return cls(inverted_values=values)
 
     def evaluate(self) -> Node:
-        value = Value(0.0)
-        others = Value(0.0)
+        value = Value(0)
+        others = Value(0)
         for c in self.base_values:
             ev = c.evaluate()
             if isinstance(ev, Value):
@@ -1366,7 +1373,7 @@ class AddAndSub(AdvancedBinOp):
 
     def __add__(self, other):
         if isinstance(other, Real):
-            result = AddAndSub(self.base_values + [Value(other)], self.inverted_values)
+            result = AddAndSub(self.base_values + [Node.from_float(other)], self.inverted_values)
         elif isinstance(other, Node):
             result = AddAndSub(self.base_values + [other], self.inverted_values)
         else:
@@ -1412,8 +1419,8 @@ class MulAndDiv(AdvancedBinOp):
     inverse_operation_symbol = '/'
     constant_term_last = False
 
-    identity = Value(1.0)
-    absorbing_element = Value(0.0)
+    identity = Value(1)
+    absorbing_element = Value(0)
 
     @staticmethod
     def _repeat_value(value: Node, times: int) -> Node:
@@ -1421,10 +1428,10 @@ class MulAndDiv(AdvancedBinOp):
 
     @staticmethod
     def _invert_value(value: Node) -> Node:
-        if isinstance(value, Value) and -1 <= value.data <= 1:
-            return Value(1.0 / value.data)
+        if isinstance(value, Value) and value.data in (-1, 1):
+            return Value(value)
 
-        return MulAndDiv.div(Value(1.0), value)
+        return Value(1) / value
 
     @staticmethod
     def _should_invert_value(value: Node) -> bool:
@@ -1448,23 +1455,28 @@ class MulAndDiv(AdvancedBinOp):
             return cls(inverted_values=values)
 
     def evaluate(self) -> Node:
-        value = Value(1.0)
-        others = Value(1.0)
+        numerator = Value(1)
+        numerator_value = Value(1)
+
         for c in self.base_values:
             ev = c.evaluate()
             if isinstance(ev, Value):
-                value.data *= ev.data
+                numerator_value.data *= ev.data
                 continue
-            others *= ev
+            numerator *= ev
 
+        denominator = Value(1)
+        denominator_value = Value(1)
         for c in self.inverted_values:
             ev = c.evaluate()
             if isinstance(ev, Value):
-                value.data /= ev.data
+                denominator_value.data *= ev.data
                 continue
-            others /= ev
+            denominator *= ev
 
-        return (value * others).reduce(evaluate=False)
+        numerator_value, denominator_value = integers.simplify_fraction(numerator_value.data, denominator_value.data)
+
+        return ((numerator_value * numerator) / (denominator_value * denominator)).reduce(evaluate=False)
 
     def approximate(self) -> float:
         result = 1.0
@@ -1480,13 +1492,13 @@ class MulAndDiv(AdvancedBinOp):
         return isinstance(value, AddAndSub)
 
     def __neg__(self):
-        result = MulAndDiv(self.base_values + [Value(-1.0)], self.inverted_values)
+        result = MulAndDiv(self.base_values + [Value(-1)], self.inverted_values)
         result.context = self.context
         return result
 
     def __mul__(self, other):
         if isinstance(other, Real):
-            result = MulAndDiv(self.base_values + [Value(other)], self.inverted_values)
+            result = MulAndDiv(self.base_values + [Node.from_float(other)], self.inverted_values)
             result.context = self.context
             return result
         elif isinstance(other, Node):
@@ -1499,7 +1511,7 @@ class MulAndDiv(AdvancedBinOp):
     def __rmul__(self, other):
         if isinstance(other, Real):
             # noinspection PyTypeChecker
-            result = MulAndDiv([Value(other)] + self.base_values, self.inverted_values)
+            result = MulAndDiv([Node.from_float(other)] + self.base_values, self.inverted_values)
             result.context = self.context
             return result
         elif isinstance(other, Node):
@@ -1511,7 +1523,7 @@ class MulAndDiv(AdvancedBinOp):
 
     def __div__(self, other):
         if isinstance(other, Real):
-            result = MulAndDiv(self.base_values, self.inverted_values + [Value(other)])
+            result = MulAndDiv(self.base_values, self.inverted_values + [Node.from_float(other)])
             result.context = self.context
             return result
         elif isinstance(other, Node):
@@ -1524,7 +1536,7 @@ class MulAndDiv(AdvancedBinOp):
     def __rsub__(self, other):
         if isinstance(other, Real):
             # noinspection PyTypeChecker
-            result = MulAndDiv([Value(other)] + self.inverted_values, self.base_values)
+            result = MulAndDiv([Node.from_float(other)] + self.inverted_values, self.base_values)
             result.context = self.context
             return result
         elif isinstance(other, Node):
@@ -1536,9 +1548,9 @@ class MulAndDiv(AdvancedBinOp):
 
     def __str__(self):
         if (not self.inverted_values) and len(self.base_values) == 2:
-            if self.base_values[0] == Value(-1.0):
+            if self.base_values[0] == Node.from_float(-1):
                 return f"-{self.base_values[1]}"
-            if self.base_values[1] == Value(-1.0):
+            if self.base_values[1] == Node.from_float(-1):
                 return f"-{self.base_values[0]}"
 
         return super().__str__()
@@ -1547,13 +1559,13 @@ class MulAndDiv(AdvancedBinOp):
 class Pow(BinOp):
     name = '^'
 
-    right_identity = Value(1.0)
+    right_identity = Value(1)
 
-    left_absorbing_element = Value(1.0)
-    left_absorbing_result = Value(1.0)
+    left_absorbing_element = Value(1)
+    left_absorbing_result = Value(1)
 
-    right_absorbing_element = Value(0.0)
-    right_absorbing_result = Value(1.0)
+    right_absorbing_element = Value(0)
+    right_absorbing_result = Value(1)
 
     @staticmethod
     def approximator(left: float, right: float) -> float:

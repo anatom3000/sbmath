@@ -130,7 +130,7 @@ class Parser(sly.Parser):
 
     @_('NUMBER')
     def number(self, p):
-        result = tree.Value(float(p.NUMBER))
+        result = tree.Node.from_float(float(p.NUMBER))
         result.context = self.context
         return result
 
@@ -261,7 +261,7 @@ def parse(data: str | Real, context: Optional[tree.Context] = ContextNotGiven) -
         context = _DEFAULT_CONTEXT
 
     if isinstance(data, Real):
-        result = tree.Value(float(data))
+        result = tree.Node.from_float(float(data))
         result.context = context
         return result
 

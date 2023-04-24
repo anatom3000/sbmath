@@ -56,7 +56,7 @@ def _match_polynomial(polynomial: Node, variable: Node) -> Optional[list[Optiona
 
         n = int(n)
 
-        return n*[None] + [Value(1.0)]
+        return n*[None] + [Value(1)]
 
     term = Wildcard("k", constant_with=variable) * variable
     m = term.matches(polynomial)
@@ -66,7 +66,7 @@ def _match_polynomial(polynomial: Node, variable: Node) -> Optional[list[Optiona
     term = variable
     m = term.matches(polynomial)
     if m:
-        return [None, Value(1.0)]
+        return [None, Value(1)]
 
     term = Wildcard("c", constant_with=variable)
     m = term.matches(polynomial)
@@ -81,4 +81,4 @@ def match_polynomial(polynomial: Node, variable: Node) -> Optional[list[Node]]:
     if raw_coefficients is None:
         return None
 
-    return [Value(0.0) if c is None else simplify(c) for c in raw_coefficients]
+    return [Value(0) if c is None else simplify(c) for c in raw_coefficients]

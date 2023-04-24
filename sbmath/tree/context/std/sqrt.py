@@ -14,10 +14,10 @@ class FunctionSqrt(PythonFunction):
 
         if evaluate and argument.is_evaluable():
             argument = argument.evaluate()
-            if isinstance(argument, Value) and argument.data.is_integer():
+            if isinstance(argument, Value):
                 root = math.sqrt(argument.data)
                 if root.is_integer():
-                    return Value(root)
+                    return Node.from_float(root)
 
         return None
 

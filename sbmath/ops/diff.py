@@ -28,14 +28,14 @@ _derivatives: dict[Function, Function] = {
 def _diff_no_reduce(expression: Node, variable: Variable) -> Node:
     m = Wildcard("_", constant_with=variable).matches(expression)
     if m:
-        result = Value(0.0)
+        result = Node.from_float(0.0)
         result.context = expression.context
 
         return result
 
     m = variable.matches(expression)
     if m:
-        result = Value(1.0)
+        result = Node.from_float(1.0)
         result.context = expression.context
 
         return result

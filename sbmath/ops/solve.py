@@ -38,7 +38,7 @@ def _solve_no_reduce(equation: Equality, unknown: Variable) -> list[Node]:
     m = (Wildcard("u", variable_with=unknown) * Wildcard("v", variable_with=unknown)).matches(autonomous)
     if m:
         u, v = m.wildcards["u"], m.wildcards["v"]
-        return solve(Equality(u, Value(0.0)), unknown) + solve(Equality(v, Value(0.0)), unknown)
+        return solve(Equality(u, Value(0)), unknown) + solve(Equality(v, Value(0)), unknown)
 
     polynomial = match_polynomial(autonomous, unknown)
     if polynomial is not None:

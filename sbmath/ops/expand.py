@@ -10,11 +10,13 @@ _binom_pat = parse("([a]+[b])^[n]")
 
 def expand(expression: Node) -> Node:
     m = _binom_pat.matches(expression)
-    if m is not None and isinstance(m.wildcards["n"], Value) and m.wildcards["n"].data.is_integer():
-        n = int(m.wildcards["n"].data)
-        a = m.wildcards["a"]
-        b = m.wildcards["b"]
-        # binomial formula
+    if m is not None:
+        n = m.wildcards["n"].reduce()
+        if isinstance(n, Value):
+            # binomial formula
+            n = int(m.wildcards["n"].data)
+            a = m.wildcards["a"]
+            b = m.wildcards["b"]
         expression = AddAndSub.add(*(math.comb(n, k) * a ** (n - k) * b ** k for k in range(n + 1))).reduce()
 
     # the pattern matching is powerful enough to support more complex expansions

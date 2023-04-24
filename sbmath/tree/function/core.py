@@ -73,14 +73,7 @@ class PythonFunction(Function):
         return argument.is_evaluable() and any(pat.matches(argument) for pat in self.special_values.keys())
 
     def evaluate(self, argument: Node) -> Node:
-        argument = argument.evaluate()
-
-        for pattern, image in self.special_values.items():
-            new = argument.morph(pattern, image)
-            if new is not None:
-                return new.evaluate()
-
-        return Value(self.pyfunc(argument.approximate()))
+        return self(argument.evaluate()).reduce()
 
     def __init__(self, func: Callable[[float], float], special_values: dict[Node, Node] = None, name: str = None):
         self.pyfunc = func

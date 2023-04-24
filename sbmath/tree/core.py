@@ -1027,7 +1027,7 @@ class BinOp(Node, ABC):
             if isinstance(reduced_left, Value) and isinstance(reduced_right, Value):
                 return Node.from_float(self.approximator(reduced_left.data, reduced_right.data))
 
-            if reduced_right == self.identity:
+            if reduced_right == self.right_identity:
                 return reduced_left
 
         return type(self)(reduced_left, reduced_right)

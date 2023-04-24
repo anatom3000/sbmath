@@ -7,14 +7,14 @@ from typing import TypeVar
 DEBUG = False
 DEBUG_FLAGS = (
     # "repl",
-    # "match",
-    # "match_adv_wc",
+    "match",
+    "match_adv_wc",
     # "match_wc",
     # "reduce",
     # "reduce_func",
     # "diff",
     # "misc"
-    "polynomial_match",
+    # "polynomial_match",
 )
 DEBUG_INDENT = 0
 

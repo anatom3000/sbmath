@@ -18,7 +18,8 @@ class Lexer(sly.Lexer):
         LPAREN, RPAREN,
         LBRACK, RBRACK,
         ARG_SEP, ARG_ASSIGN,
-        EQUALS
+        EQUALS,
+        DEFINED_EXPR_SEP, DEFINED_EXPR_APPROX, DEFINED_EXPR_INACCURACY,
     }
 
     # String containing ignored characters between tokens
@@ -48,12 +49,18 @@ class Lexer(sly.Lexer):
 
     EQUALS = r'='
 
+    DEFINED_EXPR_SEP = r'\|'
+    DEFINED_EXPR_APPROX = r'\~='
+    DEFINED_EXPR_INACCURACY = r'~'
+
 
 _ = lambda _: (lambda _: None)  # fake value to make mypy happy
 
 
 # noinspection PyUnresolvedReferences
 class Parser(sly.Parser):
+    # debugfile = "parser.out"
+
     def __init__(self, context: tree.Context = None):
         super().__init__()
         self.context = context
@@ -133,6 +140,33 @@ class Parser(sly.Parser):
         result.context = self.context
         return result
 
+    @_('expr EQUALS expr')
+    def equality(self, p):
+        result = tree.Equality(p.expr0, p.expr1)
+
+        result.context = self.context
+        return result
+
+    @_('equality')
+    def expr(self, p):
+        return p.equality
+
+    @_('DEFINED_EXPR_SEP DEFINED_EXPR_APPROX number DEFINED_EXPR_INACCURACY number')
+    def definednode_approx(self, p):
+        return p.number0, p.number1
+
+    @_('DEFINED_EXPR_SEP DEFINED_EXPR_APPROX number')
+    def definednode_approx(self, p):
+        return p.number, None
+
+    @_('')
+    def definednode_approx(self, p):
+        return None, None
+
+    @_('LPAREN ident DEFINED_EXPR_SEP equality definednode_approx RPAREN')
+    def expr(self, p):
+        return tree.Solution(p.equality, p.ident, approximation=p.definednode_approx[0], inaccuracy=p.definednode_approx[1])
+
     @_('LBRACK IDENT RBRACK')
     def wildcard(self, p):
         result = tree.Wildcard(p.IDENT)
@@ -209,13 +243,6 @@ class Parser(sly.Parser):
             result = tree.FunctionApplication("exp", p.expr1)
         else:
             result = p.expr0 ** p.expr1
-
-        result.context = self.context
-        return result
-
-    @_('expr EQUALS expr')
-    def expr(self, p):
-        result = tree.Equality(p.expr0, p.expr1)
 
         result.context = self.context
         return result

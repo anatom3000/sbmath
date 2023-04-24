@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import copy
 import itertools
-import uuid
 
 from collections import defaultdict
 
@@ -16,7 +15,8 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 
 from sbmath.tree.context import MissingContextError, Context
-from sbmath import _utils, integers
+from sbmath import _utils
+from sbmath.computation import fraction
 
 # debug function
 from sbmath._utils import debug, inc_indent, dec_indent
@@ -161,7 +161,7 @@ class Node(ABC):
 
     @classmethod
     def from_float(cls, x: float):
-        num, denom = integers.float_to_fraction(x)
+        num, denom = fraction.float_to_fraction(x)
         if denom == 1:
             return Value(num)
 
@@ -1139,7 +1139,9 @@ class BinOp(Node, ABC):
 
 
 class Value(Leaf):
-    data: int
+
+    def __init__(self, data: int):
+        super().__init__(int(data))
 
     def __neg__(self):
         return Value(-self.data)
@@ -1342,23 +1344,41 @@ class AddAndSub(AdvancedBinOp):
             return cls(inverted_values=values)
 
     def evaluate(self) -> Node:
-        value = Value(0)
+        evaluated_fraction = [0, 1]
         others = Value(0)
         for c in self.base_values:
             ev = c.evaluate()
             if isinstance(ev, Value):
-                value.data += ev.data
+                evaluated_fraction[0] += ev.data
                 continue
+
+            if isinstance(ev, MulAndDiv) and len(ev.base_values) == len(ev.inverted_values) == 1:
+                num = ev.base_values[0]
+                denom = ev.inverted_values[0]
+                if isinstance(num, Value) and isinstance(denom, Value):
+                    num = num.data
+                    denom = denom.data
+                    evaluated_fraction = [(evaluated_fraction[0]*denom+num*evaluated_fraction[1]), (denom*evaluated_fraction[1])]
+                    continue
             others += ev
 
         for c in self.inverted_values:
             ev = c.evaluate()
             if isinstance(ev, Value):
-                value.data -= ev.data
+                evaluated_fraction[0] -= ev.data
                 continue
+
+            if isinstance(ev, MulAndDiv) and len(ev.base_values) == len(ev.inverted_values) == 1:
+                num = ev.base_values[0]
+                denom = ev.inverted_values[0]
+                if isinstance(num, Value) and isinstance(denom, Value):
+                    num = num.data
+                    denom = denom.data
+                    evaluated_fraction = [(evaluated_fraction[0]*denom-num*evaluated_fraction[1]), (denom*evaluated_fraction[1])]
+                    continue
             others -= ev
 
-        return (value + others).reduce(evaluate=False)
+        return (MulAndDiv.div(Value(evaluated_fraction[0]), Value(evaluated_fraction[1])) + others).reduce(evaluate=False)
 
     def approximate(self) -> float:
         result = 0.0
@@ -1371,7 +1391,7 @@ class AddAndSub(AdvancedBinOp):
 
     @staticmethod
     def _put_parentheses(value: Node) -> bool:
-        # addition/substraction always have the lowest precendence
+        # addition/substraction always have the lowest precedence
         return False
 
     def __neg__(self):
@@ -1482,7 +1502,7 @@ class MulAndDiv(AdvancedBinOp):
                 continue
             denominator *= ev
 
-        numerator_value, denominator_value = integers.simplify_fraction(numerator_value.data, denominator_value.data)
+        numerator_value, denominator_value = fraction.simplify_fraction(numerator_value.data, denominator_value.data)
 
         return ((numerator_value * numerator) / (denominator_value * denominator)).reduce(evaluate=False)
 

@@ -9,6 +9,7 @@ from dataclasses import dataclass, field
 class Context:
     functions: dict[str, Function] = field(default_factory=dict)
     variables: dict[str, Node] = field(default_factory=dict)
+    constants: dict[str, Node] = field(default_factory=dict)
 
     def add_function(self, func: Function):
         self.functions[func.name] = func
@@ -17,13 +18,18 @@ class Context:
         value.context = self
         self.variables[name] = value
 
+    def add_constant(self, name: str, value: Node):
+        value.context = self
+        self.constants[name] = value
+
     def __add__(self, other: Context) -> Context:
         if not isinstance(other, Context):
             return NotImplemented
 
         new = Context(
             functions={**self.functions.copy(), **other.functions.copy()},
-            variables={**self.variables.copy(), **other.variables.copy()}
+            variables={**self.variables.copy(), **other.variables.copy()},
+            constants={**self.constants.copy(), **other.constants.copy()}
         )
 
         return new
@@ -34,6 +40,7 @@ class Context:
 
         self.functions.update(other.functions)
         self.variables.update(other.variables)
+        self.constants.update(other.constants)
 
 
 class MissingContextError(Exception):

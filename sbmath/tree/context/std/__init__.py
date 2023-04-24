@@ -37,9 +37,11 @@ _std = Context()
 
 parse = lambda x: _parse(x, _std)
 
-_std.add_variable("pi", parse(math.pi))
-_std.add_variable("tau", parse(math.tau))
-_std.add_variable("e", parse(math.e))
+# TODO: bring back floating point constants
+#       they cannot be represented anymore with Values
+# _std.add_variable("pi", parse(math.pi))
+# _std.add_variable("tau", parse(math.tau))
+# _std.add_variable("e", parse(math.e))
 
 
 # not the optimal implementation for abs since it will approximate any parameter

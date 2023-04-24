@@ -15,7 +15,7 @@ from numbers import Real
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 
-from sbmath.tree.context import MissingContextError
+from sbmath.tree.context import MissingContextError, Context
 from sbmath import _utils, integers
 
 # debug function
@@ -1158,33 +1158,41 @@ class Value(Leaf):
 
 
 class Variable(Leaf):
-    def __init__(self, data, replace_on_reduce: bool = False):
-        super().__init__(data)
-        self.replace_on_reduce = replace_on_reduce
-
     def is_evaluable(self) -> bool:
-        return self.context is not None and self.data in self.context.functions.keys()
+        return self.context is not None and self.data in self.context.variables.keys() or self.data in self.context.constants.keys()
 
     def evaluate(self) -> Node:
         if self.context is None:
             raise MissingContextError(f"can't evaluate variable '{self.data}' without context")
 
-        if self.data not in self.context.variables.keys():
+        is_constant = self.data not in self.context.constants.keys()
+        is_variable = self.data not in self.context.variables.keys()
+
+        if not is_constant and not is_variable:
             raise MissingContextError(f"context exists but variable '{self.data}' is undefined")
 
-        if self.replace_on_reduce:
+        if is_variable:
             return self.context.variables[self.data].evaluate()
 
         return self
 
     def reduce(self, depth=-1, *, evaluate: bool = True) -> Node:
-        if self.replace_on_reduce:
-            return self.context.variables[self.data].reduce(depth, evaluate=evaluate)
-        else:
-            return self
+        return self
 
     def approximate(self) -> float:
-        return self.context.variables[self.data].evaluate().approximate()
+        if self.context is None:
+            raise MissingContextError(f"can't approximate variable '{self.data}' without context")
+
+        is_constant = self.data not in self.context.constants.keys()
+        is_variable = self.data not in self.context.variables.keys()
+
+        if not is_constant and not is_variable:
+            raise MissingContextError(f"context exists but variable '{self.data}' is undefined")
+
+        if is_constant:
+            return self.context.constants[self.data].evaluate()
+
+        return self.context.variables[self.data].evaluate()
 
 
 class Wildcard(Node):

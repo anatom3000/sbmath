@@ -70,7 +70,7 @@ class PythonFunction(Function):
         return None
 
     def can_evaluate(self, argument: Node) -> bool:
-        return argument.is_evaluable() or any(pat.matches(argument) for pat in self.special_values.keys())
+        return argument.is_evaluable()
 
     def evaluate(self, argument: Node) -> Node:
         return self(argument.evaluate()).reduce()

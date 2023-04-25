@@ -299,6 +299,8 @@ class AdvancedBinOp(Node, ABC):
         if depth == 0:
             return self
 
+        inc_indent()
+
         if evaluate:
             eval_part = type(self)(
                 filter(lambda x: x.is_evaluable(), self.base_values),
@@ -317,6 +319,7 @@ class AdvancedBinOp(Node, ABC):
             eval_result = eval_part.evaluate()
 
             debug(f"{eval_result = }", flag='reduce')
+            dec_indent()
 
             if isinstance(eval_result, type(self)):
                 non_eval_part.base_values += eval_result.base_values
@@ -329,10 +332,12 @@ class AdvancedBinOp(Node, ABC):
         else:
             non_eval_part = self
 
+        debug(f"{non_eval_part = }", flag='reduce')
+
         value_occurences: defaultdict[Node, int] = defaultdict(int)
 
-        for value in non_eval_part.base_values:
-            reduced = value.reduce(depth - 1, evaluate=evaluate)
+        for occurence in non_eval_part.base_values:
+            reduced = occurence.reduce(depth - 1, evaluate=evaluate)
             if isinstance(reduced, type(non_eval_part)):
                 v: Node
                 for v in reduced.base_values:
@@ -343,8 +348,10 @@ class AdvancedBinOp(Node, ABC):
             else:
                 value_occurences[reduced] += 1
 
-        for value in non_eval_part.inverted_values:
-            reduced = value.reduce(depth - 1, evaluate=evaluate)
+        debug(f"base no inverse {value_occurences = }", flag='reduce')
+
+        for occurence in non_eval_part.inverted_values:
+            reduced = occurence.reduce(depth - 1, evaluate=evaluate)
 
             if isinstance(reduced, type(non_eval_part)):
                 for v in reduced.base_values:
@@ -354,38 +361,43 @@ class AdvancedBinOp(Node, ABC):
             else:
                 value_occurences[reduced] -= 1
 
+        debug(f"final {value_occurences = }", flag='reduce')
+
         base_values = []
         inverted_values = []
         remaining_evaluable = type(self)((), ())
 
-        for key, value in value_occurences.items():
-            if value == 0:
+        for value, occurence in value_occurences.items():
+            if occurence == 0:
                 continue
 
-            if key == self.identity:
+            if value == self.identity:
                 continue
 
-            if key == self.absorbing_element:
+            if value == self.absorbing_element:
+                dec_indent()
                 return self.absorbing_element
 
-            if evaluate and key.is_evaluable():
-                remaining_evaluable.base_values.append(self._repeat_value(key, value))
+            if evaluate and value.is_evaluable():
+                remaining_evaluable.base_values.append(self._repeat_value(value, occurence))
                 continue
 
             # noinspection PyTypeChecker
-            if self._should_invert_value(key):
+            if self._should_invert_value(value):
                 # noinspection PyTypeChecker
-                key = self._invert_value(key)
-                value *= -1
+                value = self._invert_value(value)
+                occurence *= -1
 
-            if value == 1:
-                base_values.append(key)
-            elif value == -1:
-                inverted_values.append(key)
-            elif value > 1:
-                base_values.append(self._repeat_value(key, value))
+            if occurence == 1:
+                base_values.append(value)
+            elif occurence == -1:
+                inverted_values.append(value)
+            elif occurence > 1:
+                base_values.append(self._repeat_value(value, occurence))
             else:
-                inverted_values.append(self._repeat_value(self._invert_value(key), value))
+                inverted_values.append(self._repeat_value(self._invert_value(value), occurence))
+
+        debug(f"before final evaluate: {base_values=}, {inverted_values=}, {remaining_evaluable=}", flag='reduce')
 
         if evaluate:
             evaluated = remaining_evaluable.evaluate()
@@ -400,6 +412,8 @@ class AdvancedBinOp(Node, ABC):
                     inverted_values.append(self._invert_value(evaluated))
                 else:
                     base_values.append(evaluated)
+
+        dec_indent()
 
         if len(base_values) == 0:
             if len(inverted_values) == 0:
@@ -1154,7 +1168,8 @@ class Value(Leaf):
 
 class Variable(Leaf):
     def is_evaluable(self) -> bool:
-        return self.context is not None and (self.data in self.context.variables.keys() or self.data in self.context.constants.keys())
+        return self.context is not None and (
+                    self.data in self.context.variables.keys() or self.data in self.context.constants.keys())
 
     def evaluate(self) -> Node:
         if self.context is None:
@@ -1603,6 +1618,8 @@ class Pow(BinOp):
 
         if isinstance(eval_right, Value):
             if isinstance(eval_left, Value):
+                if eval_right.data < 0:
+                    return 1 / Value(eval_left.data ** (-eval_right.data))
                 return Value(eval_left.data ** eval_right.data)
             if isinstance(eval_left, MulAndDiv) and len(eval_left.base_values) == len(eval_left.inverted_values) == 1:
                 num = eval_left.base_values[0]

@@ -28,9 +28,9 @@ class FunctionSqrt(PythonFunction):
                 if inside == 1:
                     return Node.from_float(outside)
                 elif outside == 1:
-                    return sqrt(Value.from_float(inside))
+                    return self(Value.from_float(inside))
                 else:
-                    return Value.from_float(outside) * sqrt(Value.from_float(inside))
+                    return Value.from_float(outside) * self(Value.from_float(inside))
 
         m = _factor_pat.matches(argument)
         if m and not m.weak:

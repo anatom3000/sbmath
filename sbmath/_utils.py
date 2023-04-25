@@ -21,12 +21,12 @@ DEBUG_INDENT = 0
 
 def inc_indent():
     global DEBUG_INDENT
-    # DEBUG_INDENT += 1
+    DEBUG_INDENT += 1
 
 
 def dec_indent():
     global DEBUG_INDENT
-    # DEBUG_INDENT -= 1
+    DEBUG_INDENT -= 1
 
 
 def debug(data, /, flag=''):

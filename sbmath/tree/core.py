@@ -942,16 +942,24 @@ class AdvancedBinOp(Node, ABC):
             else f"{value}"
             for value in self.base_values)
 
+        if self.inverted_values and len(self.inverted_values) != 1:
+            text = '(' + text + ')'
+
         if self.inverted_values:
             if not self.base_values:
                 text += f"{self.identity}"
 
             text += f' {self.inverse_operation_symbol} ' if self.base_values else f'{self.inverse_operation_symbol} '
+            if len(self.inverted_values) != 1:
+                text += '('
 
-        text += f' {self.inverse_operation_symbol} '.join(
+        text += f' {self.base_operation_symbol} '.join(
             f"({value})" if self._put_parentheses(value)
             else f"{value}"
             for value in self.inverted_values)
+
+        if self.inverted_values and len(self.inverted_values) != 1:
+            text += ')'
 
         return text
 
@@ -1635,7 +1643,7 @@ class Pow(BinOp):
 
     @staticmethod
     def _put_parentheses(value: Node) -> bool:
-        return isinstance(value, AddAndSub) or isinstance(value, MulAndDiv)
+        return isinstance(value, AddAndSub) or isinstance(value, MulAndDiv) or (isinstance(value, Value) and value.data < 0)
 
 
 @dataclass

@@ -42,10 +42,7 @@ def _solve_no_reduce(equation: Equality, unknown: Variable) -> list[Node]:
 
     polynomial = match_polynomial(autonomous, unknown)
     if polynomial is not None:
-        result = find_roots(polynomial)
-        print(f"{result = }")
-
-        return result
+        return find_roots(polynomial)
 
     raise NotImplementedError(f"could not solve the equation. {equation = }, ")
 

@@ -12,3 +12,16 @@ def prime_factorize(n: int) -> dict[int, int]:
             factors[i] += 1
 
     return dict(factors)
+
+
+def decompose_sqrt(n: int) -> tuple[int, int]:
+    outside = 1
+    inside = 1
+
+    factorized = integer.prime_factorize(n)
+    for p, k in factorized.items():
+        outside *= p ** (k // 2)
+        if p % 2 != 0:
+            inside *= p
+
+    return outside, inside  # we usually write a√b (a is outside, b is inside), hence the order

@@ -2,8 +2,11 @@ from __future__ import annotations
 
 import math
 
-from sbmath.tree import PythonFunction, Node, Value
+from sbmath.tree import PythonFunction, Node, Value, Wildcard
 from sbmath.computation import integer
+
+_factor_pat = Wildcard("a") * Wildcard("b")
+_ratio_pat = Wildcard("a") / Wildcard("b")
 
 
 class FunctionSqrt(PythonFunction):
@@ -15,24 +18,31 @@ class FunctionSqrt(PythonFunction):
 
         if evaluate and argument.is_evaluable():
             argument = argument.evaluate()
-            if isinstance(argument, Value):
-                root = math.sqrt(argument.data)
-                if root.is_integer():
-                    return Node.from_float(root)
+
+        if isinstance(argument, Value):
+            root = math.sqrt(argument.data)
+            if root.is_integer():
+                return Node.from_float(root)
+            else:
+                outside, inside = integer.decompose_sqrt(argument.data)
+                if inside == 1:
+                    return Node.from_float(outside)
+                elif outside == 1:
+                    return sqrt(Value.from_float(inside))
                 else:
-                    outside = 1
-                    inside = 1
-                    factorized = integer.prime_factorize(argument.data)
-                    for p, k in factorized.items():
-                        outside *= p**(k//2)
-                        if p % 2 != 0:
-                            inside *= p
-                    if inside == 1:
-                        return Node.from_float(outside)
-                    elif outside == 1:
-                        return self(Value.from_float(inside))
-                    else:
-                        return Value.from_float(outside) * self(Value.from_float(inside))
+                    return Value.from_float(outside) * sqrt(Value.from_float(inside))
+
+        m = _factor_pat.matches(argument)
+        if m and not m.weak:
+            sqrt_a = self(m.wildcards['a']).reduce(depth=depth-1, evaluate=evaluate)
+            sqrt_b = self(m.wildcards['b']).reduce(depth=depth-1, evaluate=evaluate)
+            return sqrt_a * sqrt_b
+
+        m = _ratio_pat.matches(argument)
+        if m:
+            sqrt_a = self(m.wildcards['a']).reduce(depth=depth-1, evaluate=evaluate)
+            sqrt_b = self(m.wildcards['b']).reduce(depth=depth-1, evaluate=evaluate)
+            return sqrt_a / sqrt_b
 
         return None
 

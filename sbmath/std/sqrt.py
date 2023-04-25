@@ -3,6 +3,7 @@ from __future__ import annotations
 import math
 
 from sbmath.tree import PythonFunction, Node, Value
+from sbmath.computation import integer
 
 
 class FunctionSqrt(PythonFunction):
@@ -18,6 +19,20 @@ class FunctionSqrt(PythonFunction):
                 root = math.sqrt(argument.data)
                 if root.is_integer():
                     return Node.from_float(root)
+                else:
+                    outside = 1
+                    inside = 1
+                    factorized = integer.prime_factorize(argument.data)
+                    for p, k in factorized.items():
+                        outside *= p**(k//2)
+                        if p % 2 != 0:
+                            inside *= p
+                    if inside == 1:
+                        return Node.from_float(outside)
+                    elif outside == 1:
+                        return self(Value.from_float(inside))
+                    else:
+                        return Value.from_float(outside) * self(Value.from_float(inside))
 
         return None
 

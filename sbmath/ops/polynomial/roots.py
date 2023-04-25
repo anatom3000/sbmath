@@ -1,16 +1,13 @@
 from __future__ import annotations
 
 from sbmath.tree import Node, Value
-from sbmath.tree.context.std import std
+from sbmath.std import std
 
 sqrt = std.functions["sqrt"]
 
 
 def root_constant(a: Node) -> list[Node]:
-    if a.is_evaluable() and a.approximate() == 0.0:
-        return [Value(42)]  # nothing special about 42, we simply cannot represent every real numbers (yet :p)
-    else:
-        return []
+    return []  # no solution since a ≠ 0
 
 
 def root_linear(a: Node, b: Node) -> list[Node]:
@@ -33,8 +30,13 @@ def root_quadratic(a: Node, b: Node, c: Node) -> list[Node]:
 def find_roots(polynomial: list[Node]) -> list[Node]:
     zero = Value(0)
 
+    if len(polynomial) == 0:
+        return [Value(42)]
+
     while polynomial[-1] == zero:
         polynomial.pop()
+        if len(polynomial) == 0:
+            return [Value(42)]
 
     if polynomial[0] == zero:
         roots = find_roots(polynomial[1:])

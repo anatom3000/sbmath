@@ -1,9 +1,8 @@
 import copy
 import math
-from dataclasses import FrozenInstanceError
 
 from sbmath.tree.context import Context
-from sbmath.tree.context.std.sqrt import FunctionSqrt
+from sbmath.std.sqrt import FunctionSqrt
 from sbmath.tree.function import Function, PythonFunction
 from sbmath.parser import parse as _parse
 import sbmath.parser
@@ -25,6 +24,10 @@ class _StdFrozenContext:
     @property
     def variables(self) -> dict[str, Function]:
         return self._context.variables.copy()
+
+    @property
+    def constants(self) -> dict[str, Function]:
+        return self._context.constants.copy()
 
     def __call__(self) -> Context:
         return copy.deepcopy(self._context)

@@ -1,12 +1,9 @@
 from __future__ import annotations
 
-import math
-
-from sbmath.tree import Node, Wildcard, Value, Function, PythonFunction, Variable, NodeFunction, AddAndSub
+from sbmath.tree import Node, Wildcard, Function, Variable, NodeFunction
 from sbmath.parser import parse
 
-from sbmath._utils import debug
-from sbmath.tree.context.std import std
+from sbmath.std import std
 
 _sum_pat: Node = parse("[u]+[v]")
 _prod_pat: Node = parse("[u]*[v]")

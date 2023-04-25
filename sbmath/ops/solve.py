@@ -3,7 +3,7 @@ from __future__ import annotations
 from sbmath.ops.polynomial import match_polynomial, find_roots
 from sbmath.ops.simplify import simplify
 from sbmath.tree import Equality, FunctionWildcard, Wildcard, Value
-from sbmath.tree.context.std import std
+from sbmath.std import std
 
 inverse_functions = {
     std.functions["exp"]: std.functions["ln"],

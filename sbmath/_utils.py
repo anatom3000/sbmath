@@ -7,10 +7,10 @@ from typing import TypeVar
 DEBUG = False
 DEBUG_FLAGS = (
     # "repl",
-    "match",
-    "match_adv_wc",
+    # "match",
+    # "match_adv_wc",
     # "match_wc",
-    # "reduce",
+    "reduce",
     # "reduce_func",
     # "diff",
     # "misc"

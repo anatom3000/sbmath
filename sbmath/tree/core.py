@@ -269,7 +269,6 @@ class Leaf(Node, ABC):
         return self
 
     def __init__(self, data):
-        super().__init__()
         self.data = data
 
 
@@ -795,11 +794,11 @@ class AdvancedBinOp(Node, ABC):
             return None
 
         no_wildcard_self = type(self)(
-            list(filter(lambda x: (not x.contains(_wildcard_wildcard))
-                                  and self.identity.matches(x, evaluate=evaluate, reduce=reduce) is None,
+            list(filter(lambda x: (not x.contains(_wildcard_wildcard)) and self.identity.matches(x, evaluate=evaluate,
+                                                                                                 reduce=reduce) is None,
                         self.base_values)),
-            list(filter(lambda x: (not x.contains(_wildcard_wildcard))
-                                  and self.identity.matches(x, evaluate=evaluate, reduce=reduce) is None,
+            list(filter(lambda x: (not x.contains(_wildcard_wildcard)) and self.identity.matches(x, evaluate=evaluate,
+                                                                                                 reduce=reduce) is None,
                         self.inverted_values))
         )
 
@@ -1019,7 +1018,7 @@ class BinOp(Node, ABC):
                     if reduced_left.evaluate() == self.left_absorbing_element:
                         return self.left_absorbing_result
 
-                    return type(self)(reduced_left, reduced_right)
+                    return type(self)(reduced_left, reduced_right).evaluate()
 
                 if reduced_right.evaluate() == self.right_identity:
                     return reduced_left
@@ -1087,12 +1086,6 @@ class BinOp(Node, ABC):
     def is_evaluable(self) -> bool:
         return self.left.is_evaluable() and self.right.is_evaluable()
 
-    def evaluate(self) -> Node:
-        left = self.left.evaluate()
-        right = self.right.evaluate()
-
-        return type(self)(left, right).reduce(evaluate=False)
-
     def contains(self, pattern: Node, *, evaluate: bool = True, reduce: bool = True) -> bool:
         return pattern.matches(self, evaluate=evaluate, reduce=reduce) is not None \
             or self.left.contains(pattern, evaluate=evaluate, reduce=reduce) \
@@ -1156,12 +1149,12 @@ class Value(Leaf):
         return self
 
     def approximate(self) -> float:
-        return self.data
+        return float(self.data)
 
 
 class Variable(Leaf):
     def is_evaluable(self) -> bool:
-        return self.context is not None and self.data in self.context.variables.keys() or self.data in self.context.constants.keys()
+        return self.context is not None and (self.data in self.context.variables.keys() or self.data in self.context.constants.keys())
 
     def evaluate(self) -> Node:
         if self.context is None:
@@ -1325,7 +1318,7 @@ class AddAndSub(AdvancedBinOp):
     @staticmethod
     def _should_invert_value(value: Node) -> bool:
         if isinstance(value, Value):
-            return value.data < 0.0
+            return value.data < 0
 
         if isinstance(value, AddAndSub):
             return len(value.base_values) > len(value.inverted_values)
@@ -1358,7 +1351,8 @@ class AddAndSub(AdvancedBinOp):
                 if isinstance(num, Value) and isinstance(denom, Value):
                     num = num.data
                     denom = denom.data
-                    evaluated_fraction = [(evaluated_fraction[0]*denom+num*evaluated_fraction[1]), (denom*evaluated_fraction[1])]
+                    evaluated_fraction = [(evaluated_fraction[0] * denom + num * evaluated_fraction[1]),
+                                          (denom * evaluated_fraction[1])]
                     continue
             others += ev
 
@@ -1374,11 +1368,13 @@ class AddAndSub(AdvancedBinOp):
                 if isinstance(num, Value) and isinstance(denom, Value):
                     num = num.data
                     denom = denom.data
-                    evaluated_fraction = [(evaluated_fraction[0]*denom-num*evaluated_fraction[1]), (denom*evaluated_fraction[1])]
+                    evaluated_fraction = [(evaluated_fraction[0] * denom - num * evaluated_fraction[1]),
+                                          (denom * evaluated_fraction[1])]
                     continue
             others -= ev
 
-        return (MulAndDiv.div(Value(evaluated_fraction[0]), Value(evaluated_fraction[1])) + others).reduce(evaluate=False)
+        return (MulAndDiv.div(Value(evaluated_fraction[0]), Value(evaluated_fraction[1])) + others).reduce(
+            evaluate=False)
 
     def approximate(self) -> float:
         result = 0.0
@@ -1401,7 +1397,7 @@ class AddAndSub(AdvancedBinOp):
 
     def __add__(self, other):
         if isinstance(other, Real):
-            result = AddAndSub(self.base_values + [Node.from_float(other)], self.inverted_values)
+            result = AddAndSub(self.base_values + [Node.from_float(float(other))], self.inverted_values)
         elif isinstance(other, Node):
             result = AddAndSub(self.base_values + [other], self.inverted_values)
         else:
@@ -1422,7 +1418,7 @@ class AddAndSub(AdvancedBinOp):
 
     def __sub__(self, other):
         if isinstance(other, Real):
-            result = AddAndSub(self.base_values, self.inverted_values + [Value(other)])
+            result = AddAndSub(self.base_values, self.inverted_values + [Node.from_float(float(other))])
         elif isinstance(other, Node):
             result = AddAndSub(self.base_values, self.inverted_values + [other])
         else:
@@ -1457,7 +1453,7 @@ class MulAndDiv(AdvancedBinOp):
     @staticmethod
     def _invert_value(value: Node) -> Node:
         if isinstance(value, Value) and value.data in (-1, 1):
-            return Value(value)
+            return Value(value.data)
 
         return Value(1) / value
 
@@ -1526,7 +1522,7 @@ class MulAndDiv(AdvancedBinOp):
 
     def __mul__(self, other):
         if isinstance(other, Real):
-            result = MulAndDiv(self.base_values + [Node.from_float(other)], self.inverted_values)
+            result = MulAndDiv(self.base_values + [Node.from_float(float(other))], self.inverted_values)
             result.context = self.context
             return result
         elif isinstance(other, Node):
@@ -1551,7 +1547,7 @@ class MulAndDiv(AdvancedBinOp):
 
     def __div__(self, other):
         if isinstance(other, Real):
-            result = MulAndDiv(self.base_values, self.inverted_values + [Node.from_float(other)])
+            result = MulAndDiv(self.base_values, self.inverted_values + [Node.from_float(float(other))])
             result.context = self.context
             return result
         elif isinstance(other, Node):
@@ -1594,6 +1590,21 @@ class Pow(BinOp):
 
     right_absorbing_element = Value(0)
     right_absorbing_result = Value(1)
+
+    def evaluate(self) -> Node:
+        eval_left = self.left.evaluate()
+        eval_right = self.right.evaluate()
+
+        if isinstance(eval_right, Value):
+            if isinstance(eval_left, Value):
+                return Value(eval_left.data ** eval_right.data)
+            if isinstance(eval_left, MulAndDiv) and len(eval_left.base_values) == len(eval_left.inverted_values) == 1:
+                num = eval_left.base_values[0]
+                denom = eval_left.inverted_values[0]
+                if isinstance(num, Value) and isinstance(denom, Value):
+                    return (num ** eval_right).evaluate() / (denom ** eval_right).evaluate()
+
+        return eval_left ** eval_right
 
     @staticmethod
     def approximator(left: float, right: float) -> float:

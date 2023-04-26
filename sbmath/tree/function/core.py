@@ -51,7 +51,7 @@ class Function(ABC):
 
 class PythonFunction(Function):
     def __hash__(self):
-        return hash((self.name, self.pyfunc, tuple(self.special_values)))
+        return hash((self.name, self.pyfunc, tuple(self.special_values.items())))
 
     def __eq__(self, other):
         return hash(self) == hash(other)
@@ -210,7 +210,7 @@ class FunctionApplication(Node):
         return f"{func_name}({self.argument})"
 
     def __hash__(self):
-        return hash(str(self))
+        return hash((self.__class__.__name__, self._function, self.argument))
 
 
 class FunctionWildcard(Wildcard):
@@ -219,6 +219,11 @@ class FunctionWildcard(Wildcard):
             and self.name == other.name             \
             and self.argument == self.argument      \
             and self.constraints == self.constraints
+
+    def __hash__(self):
+        constraints_hashes = tuple(sorted(hash((k, v)) for k, v in self.constraints))
+
+        return hash((self.__class__.__name__, self.name, self.argument, constraints_hashes))
 
     def change_argument(self, new_argument: Node):
         return type(self)(self.name, new_argument, **self.constraints)

@@ -156,9 +156,6 @@ class Node(ABC):
     def __repr__(self) -> str:
         return self.__str__()
 
-    def __hash__(self):
-        return hash(str(self))
-
     @classmethod
     def from_float(cls, x: float):
         num, denom = fraction.float_to_fraction(x)
@@ -248,7 +245,7 @@ class Leaf(Node, ABC):
         return NotImplemented
 
     def __hash__(self):
-        return hash(str(self))
+        return hash((self.__class__.__name__, self.data))
 
     def __str__(self):
         return str(self.data)
@@ -967,7 +964,11 @@ class AdvancedBinOp(Node, ABC):
         return text
 
     def __hash__(self):
-        return hash(str(self))
+        # special hash allowing two permutations of the same AdvBinOp to have the same hash
+        base_values_hashes = tuple(sorted(hash(val) for val in self.base_values))
+        inverted_values_hashes = tuple(sorted(hash(val) for val in self.inverted_values))
+
+        return hash((self.__class__.__name__, base_values_hashes, inverted_values_hashes))
 
     @property
     def context(self) -> Optional[Context]:
@@ -1153,7 +1154,7 @@ class BinOp(Node, ABC):
         return f"{left} {self.name} {right}"
 
     def __hash__(self):
-        return hash(str(self))
+        return hash((self.__class__.__name__, self.left, self.right))
 
 
 class Value(Leaf):
@@ -1224,7 +1225,9 @@ class Wildcard(Node):
         return self.name == other.name and self.constraints == other.constraints
 
     def __hash__(self):
-        return hash(str(self))
+        constraints_hashes = tuple(sorted(hash((k, v)) for k, v in self.constraints))
+
+        return hash((self.__class__.__name__, self.name, constraints_hashes))
 
     def contains(self, pattern: Node, *, evaluate: bool = True, reduce: bool = True) -> bool:
         return pattern.matches(self, evaluate=evaluate, reduce=reduce) is not None

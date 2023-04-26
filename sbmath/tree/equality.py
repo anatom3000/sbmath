@@ -39,8 +39,8 @@ class Equality(Node):
         return right_match
 
     # noinspection PyProtectedMember
-    def matches(self, value: Node, state: MatchResult = None, *, evaluate: bool = True, reduce: bool = True) -> \
-            Optional[MatchResult]:
+    def matches(self, value: Node, state: MatchResult = None, *, evaluate: bool = True, reduce: bool = True) \
+            -> Optional[MatchResult]:
 
         if state is None:
             state = MatchResult()
@@ -50,7 +50,8 @@ class Equality(Node):
         if no_reduce_state and not (no_reduce_state.weak and reduce):
             return no_reduce_state
 
-        no_reduce_state_swapped = Equality(self.right, self.left)._match_no_reduce(value, copy.deepcopy(state), evaluate, reduce)
+        no_reduce_state_swapped = Equality(self.right, self.left)._match_no_reduce(value, copy.deepcopy(state),
+                                                                                   evaluate, reduce)
 
         if no_reduce_state_swapped and not (no_reduce_state_swapped.weak and reduce):
             return no_reduce_state_swapped

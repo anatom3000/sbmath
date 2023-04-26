@@ -588,11 +588,14 @@ class AdvancedBinOp(Node, ABC):
 
             return base_match_table, inverted_match_table, state
 
-        if not inverted:
-            combined_values = type(self)((v for _, v in base_similars), (v for _, v in inverted_similars))
-        else:
-            combined_values = type(self)((v for _, v in inverted_similars), (v for _, v in base_similars))
+        combined_values = type(self)(itertools.chain((v for _, v in base_similars), (v for _, v in inverted_similars)))
 
+        # cheap reducing
+        combined_values.base_values = [val for val in combined_values.base_values if val != self.identity]
+        combined_values.inverted_values = [val for val in combined_values.inverted_values if val != self.identity]
+
+        debug(f"{base_similars = }", flag='match_adv_wc')
+        debug(f"{inverted_similars = }", flag='match_adv_wc')
         debug(f"{combined_values = }", flag='match_adv_wc')
         debug(f"0) {state = }", flag='match_adv_wc')
 

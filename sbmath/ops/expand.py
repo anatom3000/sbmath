@@ -3,23 +3,24 @@ from __future__ import annotations
 import math
 
 from sbmath import parse
-from sbmath.tree import Node, AddAndSub, Value
+from sbmath.tree import Node, AddAndSub, Value, MatchResult
 
 _prod_sum_pat = parse("[k]*([a]+[b])")
 _sum_prod_pat = parse("[k]*[a]+[k]*[b]")
-_binom_pat = parse("([a]+[b])^[n]")
+_binom_pat = parse("([a]+[b]) ^ [n, integer_value: 1]")
+
+
+def _binomial_expansion(m: MatchResult) -> Node:
+    a = m.wildcards["a"]
+    b = m.wildcards["b"]
+
+    n = m.wildcards["n"].data
+
+    return AddAndSub.add(*(math.comb(n, k) * a ** (n - k) * b ** k for k in range(n + 1))).reduce()
 
 
 def expand(expression: Node) -> Node:
-    m = _binom_pat.matches(expression)
-    if m is not None:
-        n = m.wildcards["n"].reduce()
-        if isinstance(n, Value):
-            # binomial formula
-            n = int(m.wildcards["n"].data)
-            a = m.wildcards["a"]
-            b = m.wildcards["b"]
-            expression = AddAndSub.add(*(math.comb(n, k) * a ** (n - k) * b ** k for k in range(n + 1))).reduce()
+    expression = expression.apply_on(_binom_pat, _binomial_expansion)
 
     # the pattern matching is powerful enough to support more complex expansions
     return expression.replace(_prod_sum_pat, _sum_prod_pat)

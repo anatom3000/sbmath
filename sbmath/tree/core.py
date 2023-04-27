@@ -1272,11 +1272,8 @@ class Wildcard(Node):
 
         return True
 
-    def matches(self, value: Node, state: MatchResult = None, *, evaluate: bool = True, reduce: bool = True) -> \
-            Optional[MatchResult]:
-        if state is None:
-            state = MatchResult()
-
+    def _match_no_reduce(self, value: Node, state: MatchResult, evaluate: bool, reduce: bool) \
+            -> Optional[MatchResult]:
         if self.name == '_':
             return state if self._match_contraints(value, evaluate, reduce) else None
 
@@ -1289,6 +1286,21 @@ class Wildcard(Node):
             return state
 
         return None
+
+    def matches(self, value: Node, state: MatchResult = None, *, evaluate: bool = True, reduce: bool = True) \
+            -> Optional[MatchResult]:
+        if state is None:
+            state = MatchResult()
+
+        no_reduce_state = self._match_no_reduce(value, copy.deepcopy(state), evaluate, reduce)
+
+        if no_reduce_state is not None:
+            return no_reduce_state
+
+        if not reduce:
+            return None
+
+        return self._match_no_reduce(value.reduce(evaluate=evaluate), state, evaluate, reduce)
 
     def _replace_identifiers(self, match_result: MatchResult) -> Node:
         if self.name not in match_result.wildcards:

@@ -180,12 +180,10 @@ class Node(ABC):
     def approximate(self) -> float:
         pass
 
-    def matches(self, value: Node, state: MatchResult = None, *, evaluate: bool = True, reduce: bool = True) -> \
-            Optional[MatchResult]:
-        if state is None:
-            state = MatchResult()
-
-        return state if self == value else None
+    @abstractmethod
+    def matches(self, value: Node, state: MatchResult = None, *, evaluate: bool = True, reduce: bool = True) \
+            -> Optional[MatchResult]:
+        pass
 
     @abstractmethod
     def _replace_identifiers(self, match_result: MatchResult) -> Node:
@@ -237,6 +235,12 @@ class Node(ABC):
 
 
 class Leaf(Node, ABC):
+    def matches(self, value: Node, state: MatchResult = None, *, evaluate: bool = True, reduce: bool = True) \
+            -> Optional[MatchResult]:
+        if state is None:
+            state = MatchResult()
+
+        return state if self == other else None
 
     def __eq__(self, other):
         if isinstance(other, type(self)):
@@ -1180,8 +1184,8 @@ class Value(Leaf):
 
 class Variable(Leaf):
     def is_evaluable(self) -> bool:
-        return self.context is not None and (
-                    self.data in self.context.variables.keys() or self.data in self.context.constants.keys())
+        return self.context is not None \
+            and (self.data in self.context.variables.keys() or self.data in self.context.constants.keys())
 
     def evaluate(self) -> Node:
         if self.context is None:
@@ -1649,7 +1653,9 @@ class Pow(BinOp):
 
     @staticmethod
     def _put_parentheses(value: Node) -> bool:
-        return isinstance(value, AddAndSub) or isinstance(value, MulAndDiv) or (isinstance(value, Value) and value.data < 0)
+        return isinstance(value, AddAndSub) \
+            or isinstance(value, MulAndDiv) \
+            or (isinstance(value, Value) and value.data < 0)
 
 
 @dataclass

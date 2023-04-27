@@ -221,7 +221,7 @@ class FunctionWildcard(Wildcard):
             and self.constraints == self.constraints
 
     def __hash__(self):
-        constraints_hashes = tuple(sorted(hash((k, v)) for k, v in self.constraints))
+        constraints_hashes = tuple(sorted(hash((k, v)) for k, v in self.constraints.items()))
 
         return hash((self.__class__.__name__, self.name, self.argument, constraints_hashes))
 

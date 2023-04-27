@@ -1264,6 +1264,12 @@ class Wildcard(Node):
             if self.constraints["explicit_value"] == Value(0) and isinstance(value, Value):
                 return False
 
+        if "integer" in self.constraints.keys():
+            if self.constraints["integer"] == Value(1) and not isinstance(value, Value):
+                return False
+            if self.constraints["integer"] == Value(0) and isinstance(value, Value):
+                return False
+
         return True
 
     def matches(self, value: Node, state: MatchResult = None, *, evaluate: bool = True, reduce: bool = True) -> \

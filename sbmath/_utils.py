@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import sys
 from collections import defaultdict
 from collections.abc import Hashable, Iterable
@@ -70,7 +72,7 @@ class BiMultiDict:
         return str(self)
 
     def __init__(self, source: dict[K, V] = None):
-        self._data: dict[K, V] = {}
+        self._data: dict[int, K | V] = {}
         self._keys_to_values: defaultdict = defaultdict(list)
         self._values_to_keys: defaultdict = defaultdict(list)
 

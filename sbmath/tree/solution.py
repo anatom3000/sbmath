@@ -38,6 +38,12 @@ class Solution(Node):
             self.variable
         )
 
+    def _apply_on_children(self, pattern: Node, modifier: Callable[[MatchResult], Node], evaluate: bool, reduce: bool) -> Node:
+        return Solution(
+            self.definition.apply_on_children(pattern, modifier, evaluate=evaluate, reduce=reduce),
+            self.variable
+        )
+
     def _matches_no_reduce(self, value: Node, state: MatchResult, evaluate: bool, reduce: bool) \
             -> Optional[MatchResult]:
         if not isinstance(value, Solution):

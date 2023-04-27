@@ -167,6 +167,9 @@ class FunctionApplication(Node):
     def _substitute_in_children(self, pattern: Node, new: Node, evaluate: bool, reduce: bool) -> Node:
         return self.change_argument(self.argument.substitute(pattern, new, evaluate=evaluate, reduce=reduce))
 
+    def _apply_on_children(self, pattern: Node, modifier: Callable[[MatchResult], Node], evaluate: bool, reduce: bool) -> Node:
+        return self.change_argument(self.argument.apply_on(pattern, modifier, evaluate=evaluate, reduce=reduce))
+
     def contains(self, pattern: Node, *, evaluate: bool = True, reduce: bool = True) -> bool:
         return pattern.matches(self, evaluate=evaluate, reduce=reduce) is not None or self.argument.contains(pattern, evaluate=evaluate, reduce=reduce)
 

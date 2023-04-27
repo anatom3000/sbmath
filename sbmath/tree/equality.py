@@ -99,6 +99,12 @@ class Equality(Node):
             self.right.substitute(pattern, new, evaluate=evaluate, reduce=reduce)
         )
 
+    def _apply_on_children(self, pattern: Node, modifier: Callable[[MatchResult], Node], evaluate: bool, reduce: bool) -> Node:
+        return type(self)(
+            self.left.apply_on(pattern, modifier, evaluate=evaluate, reduce=reduce),
+            self.right.apply_on(pattern, modifier, evaluate=evaluate, reduce=reduce)
+        )
+
     def is_evaluable(self) -> bool:
         return False
 

@@ -233,6 +233,19 @@ class Node(ABC):
     def contains(self, pattern: Node, *, evaluate: bool = True, reduce: bool = True) -> bool:
         pass
 
+    def apply_on(self, pattern: Node, modifier: Callable[[MatchResult], Node], *, evaluate: bool = True, reduce: bool = True) -> Node:
+        m = pattern.matches(self, evaluate=evaluate, reduce=reduce)
+        if m:
+            new = modifier(m)
+        else:
+            new = self
+
+        return new._apply_on_children(pattern, modifier, evaluate, reduce)
+
+    @abstractmethod
+    def _apply_on_children(self, pattern: Node, modifier: Callable[[MatchResult], Node], evaluate: bool, reduce: bool) -> Node:
+        pass
+
 
 class Leaf(Node, ABC):
     def matches(self, value: Node, state: MatchResult = None, *, evaluate: bool = True, reduce: bool = True) \
@@ -240,7 +253,7 @@ class Leaf(Node, ABC):
         if state is None:
             state = MatchResult()
 
-        return state if self == other else None
+        return state if self == value else None
 
     def __eq__(self, other):
         if isinstance(other, type(self)):
@@ -267,6 +280,9 @@ class Leaf(Node, ABC):
         return self
 
     def _substitute_in_children(self, pattern: Node, new: Node, evaluate: bool, reduce: bool = True) -> Node:
+        return self
+
+    def _apply_on_children(self, pattern: Node, modifier: Callable[[MatchResult], Node], evaluate: bool, reduce: bool) -> Node:
         return self
 
     def __init__(self, data):
@@ -912,6 +928,12 @@ class AdvancedBinOp(Node, ABC):
             inverted_values=(x.substitute(pattern, new, evaluate=evaluate, reduce=reduce) for x in self.inverted_values)
         )
 
+    def _apply_on_children(self, pattern: Node, modifier: Callable[[MatchResult], Node], evaluate: bool, reduce: bool) -> Node:
+        return type(self)(
+            base_values=(x.apply_on(pattern, modifier, evaluate=evaluate, reduce=reduce) for x in self.base_values),
+            inverted_values=(x.apply_on(pattern, modifier, evaluate=evaluate, reduce=reduce) for x in self.inverted_values)
+        )
+
     def is_evaluable(self) -> bool:
         return all(c.is_evaluable() for c in itertools.chain(self.base_values, self.inverted_values))
 
@@ -1113,6 +1135,12 @@ class BinOp(Node, ABC):
             self.right.substitute(pattern, new, evaluate=evaluate, reduce=reduce)
         )
 
+    def _apply_on_children(self, pattern: Node, modifier: Callable[[MatchResult], Node], evaluate: bool, reduce: bool) -> Node:
+        return type(self)(
+            self.left.apply_on(pattern, modifier, evaluate=evaluate, reduce=reduce),
+            self.right.apply_on(pattern, modifier, evaluate=evaluate, reduce=reduce)
+        )
+
     def is_evaluable(self) -> bool:
         return self.left.is_evaluable() and self.right.is_evaluable()
 
@@ -1312,6 +1340,9 @@ class Wildcard(Node):
         return self
 
     def _substitute_in_children(self, pattern: Node, new: Node, evaluate: bool, reduce: bool) -> Node:
+        return self
+
+    def _apply_on_children(self, pattern: Node, modifier: Callable[[MatchResult], Node], evaluate: bool, reduce: bool) -> Node:
         return self
 
     def is_evaluable(self) -> bool:

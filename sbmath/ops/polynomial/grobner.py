@@ -129,7 +129,11 @@ def spolynomial(polynomial1: Polynomial, polynomial2: Polynomial) -> Polynomial:
         - polynomial_monomial_product(polynomial2, exponents_div(lcm, leading_exponents2))
 
 
-def grobner_basis(system: list[Polynomial]) -> list[Polynomial]:
+def grobner_bases(system: list[Polynomial]) -> list[Polynomial]:
+    # the overall logic of this function comes from sympy's implementation of the buchberger's algorithm
+    # I only restructured the code, added type annotations and made the algorithm symbolic
+    # while the original implementation could only use
+    # https://github.com/sympy/sympy/blob/26f7bdbe3f860e7b4492e102edec2d6b429b5aaf/sympy/polys/groebnertools.py#L50
     if len(system) == 0:
         return []
 
@@ -206,7 +210,7 @@ if __name__ == '__main__':
         Polynomial({(1, 0): Value(1), (0, 1): Value(2), (0, 0): Value(-1)}, [x, y])
     ]
 
-    b = grobner_basis(s)
+    b = grobner_bases(s)
     for p in b:
         print(p)
 

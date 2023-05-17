@@ -6,7 +6,7 @@ from sbmath.std import std
 sqrt = std.functions["sqrt"]
 
 
-def root_constant(a: Node) -> list[Node]:
+def root_constant(_: Node) -> list[Node]:
     return []  # no solution since a ≠ 0
 
 

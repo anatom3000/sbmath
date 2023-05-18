@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import math
 
-from sbmath.tree import PythonFunction, Node, Value, Wildcard
+from sbmath.expression import PythonFunction, Expression, Value, Wildcard
 from sbmath.computation import integer
 
 _factor_pat = Wildcard("a") * Wildcard("b")
@@ -10,7 +10,7 @@ _ratio_pat = Wildcard("a") / Wildcard("b")
 
 
 class FunctionSqrt(PythonFunction):
-    def reduce_func(self, argument: Node, depth: int, evaluate: bool) -> Optional[Node]:
+    def reduce_func(self, argument: Expression, depth: int, evaluate: bool) -> Optional[Expression]:
         result = super().reduce_func(argument, depth, evaluate)
 
         if result is not None:
@@ -22,11 +22,11 @@ class FunctionSqrt(PythonFunction):
         if isinstance(argument, Value):
             root = math.sqrt(argument.data)
             if root.is_integer():
-                return Node.from_float(root)
+                return Expression.from_float(root)
             else:
                 outside, inside = integer.decompose_sqrt(argument.data)
                 if inside == 1:
-                    return Node.from_float(outside)
+                    return Expression.from_float(outside)
                 elif outside == 1:
                     return self(Value.from_float(inside))
                 else:

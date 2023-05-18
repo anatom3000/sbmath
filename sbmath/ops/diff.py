@@ -1,14 +1,14 @@
 from __future__ import annotations
 
-from sbmath.tree import Node, Wildcard, Function, Variable, NodeFunction
+from sbmath.expression import Expression, Wildcard, Function, Variable, ExpressionFunction
 from sbmath.parser import parse
 
 from sbmath.std import std
 
-_sum_pat: Node = parse("[u]+[v]")
-_prod_pat: Node = parse("[u]*[v]")
-_div_pat: Node = parse("[u]/[v]")
-_func_pat: Node = parse("[func]([arg])")
+_sum_pat: Expression = parse("[u]+[v]")
+_prod_pat: Expression = parse("[u]*[v]")
+_div_pat: Expression = parse("[u]/[v]")
+_func_pat: Expression = parse("[func]([arg])")
 
 
 _x = parse("x")
@@ -22,17 +22,17 @@ _derivatives: dict[Function, Function] = {
 }
 
 
-def _diff_no_reduce(expression: Node, variable: Variable) -> Node:
+def _diff_no_reduce(expression: Expression, variable: Variable) -> Expression:
     m = Wildcard("_", constant_with=variable).matches(expression)
     if m:
-        result = Node.from_float(0.0)
+        result = Expression.from_float(0.0)
         result.context = expression.context
 
         return result
 
     m = variable.matches(expression)
     if m:
-        result = Node.from_float(1.0)
+        result = Expression.from_float(1.0)
         result.context = expression.context
 
         return result
@@ -95,7 +95,7 @@ def _diff_no_reduce(expression: Node, variable: Variable) -> Node:
     if m:
         func = m.functions_wildcards["func"]
         arg = m.wildcards["arg"]
-        if isinstance(func, NodeFunction):
+        if isinstance(func, ExpressionFunction):
             result = _diff_no_reduce(func(arg).reduce(depth=1), variable)
             result.context = expression.context
             return result
@@ -106,13 +106,13 @@ def _diff_no_reduce(expression: Node, variable: Variable) -> Node:
             return result
 
     # TODO: function with multiple parameters
-    # TODO: function operating on raw nodes in expression tree
+    # TODO: function operating on expressions in expressions
     result = Wildcard("diff", expr=expression, var=variable)
     result.context = expression.context
 
     return result
 
 
-def diff(expression: Node, variable: Variable) -> Node:
+def diff(expression: Expression, variable: Variable) -> Expression:
     return _diff_no_reduce(expression, variable).reduce()
 

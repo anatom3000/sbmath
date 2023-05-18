@@ -1,9 +1,9 @@
 import copy
 import math
 
-from sbmath.tree.context import Context
+from sbmath.expression.context import Context
 from sbmath.std.sqrt import FunctionSqrt
-from sbmath.tree.function import Function, PythonFunction
+from sbmath.expression.function import Function, PythonFunction
 from sbmath.parser import parse as _parse
 import sbmath.parser
 

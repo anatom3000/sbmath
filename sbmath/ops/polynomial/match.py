@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections.abc import Callable
 
 from sbmath.ops.simplify import simplify
-from sbmath.tree import Node, Wildcard, Value
+from sbmath.expression import Expression, Wildcard, Value
 
 from sbmath._utils import debug
 from sbmath.parser import parse
@@ -17,7 +17,7 @@ _zero = Value(0)
 _one = Value(1)
 
 
-def _extract_binary_operator(value: Node, pattern: Node) -> list[Node]:
+def _extract_binary_operator(value: Expression, pattern: Expression) -> list[Expression]:
     terms = []
     m = pattern.matches(value)
     while m:
@@ -29,14 +29,14 @@ def _extract_binary_operator(value: Node, pattern: Node) -> list[Node]:
     return terms
 
 
-def match_polynomial_from_predicate(value: Node, predicate: Callable[[Node], bool]) -> Polynomial:
+def match_polynomial_from_predicate(value: Expression, predicate: Callable[[Expression], bool]) -> Polynomial:
     terms = _extract_binary_operator(simplify(value), _add_pat)
 
     polynomial = Polynomial.zero([])
-    variable_indices: dict[Node, int] = {}
+    variable_indices: dict[Expression, int] = {}
     for term in terms:
-        coefficient: Node = _one
-        monomial: dict[Node, int] = {}
+        coefficient: Expression = _one
+        monomial: dict[Expression, int] = {}
 
         factors = _extract_binary_operator(term, _mul_pat)
         for factor in factors:
@@ -65,11 +65,11 @@ def match_polynomial_from_predicate(value: Node, predicate: Callable[[Node], boo
     return polynomial
 
 
-def match_polynomial(value: Node, variables: list[Node]):
+def match_polynomial(value: Expression, variables: list[Expression]):
     return match_polynomial_from_predicate(value, lambda x: x in variables)
 
 if __name__ == '__main__':
-    from sbmath.tree import Variable
+    from sbmath.expression import Variable
 
     x = parse('x')
 

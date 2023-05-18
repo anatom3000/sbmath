@@ -31,16 +31,16 @@ class Set(ABC):
         pass
 
     @abstractmethod
-    def contains(self, other: Node) -> bool:
+    def contains(self, other: Expression) -> bool:
         pass
 
     @abstractmethod
-    def __eq__(self, other: Node):
+    def __eq__(self, other: Expression):
         pass
 
 
 class Union(Set):
-    def __eq__(self, other: Node):
+    def __eq__(self, other: Expression):
         if not isinstance(other, Union):
             return False
 
@@ -49,7 +49,7 @@ class Union(Set):
     def issubset(self, other: Set) -> bool:
         return any(m.issubset(other) for m in self.members)
 
-    def contains(self, other: Node) -> bool:
+    def contains(self, other: Expression) -> bool:
         return any(m.contains(other) for m in self.members)
 
     def __init__(self, *members: Set):
@@ -66,7 +66,7 @@ class Intersection(Set):
     def issubset(self, other: Set) -> bool:
         return all(m.issubset(other) for m in self.members)
 
-    def contains(self, other: Node) -> bool:
+    def contains(self, other: Expression) -> bool:
         return all(m.contains(other) for m in self.members)
 
     def __init__(self, *members: Set):
@@ -77,7 +77,7 @@ class Difference(Set):
     def issubset(self, other: Set) -> bool:
         pass
 
-    def contains(self, other: Node) -> bool:
+    def contains(self, other: Expression) -> bool:
         pass
 
     def __eq__(self, other):
@@ -89,7 +89,7 @@ class Difference(Set):
 
 
 class Interval(Set):
-    def __init__(self, start: sbmath.tree.Node, end: sbmath.tree.Node):
+    def __init__(self, start: sbmath.expression.Expression, end: sbmath.expression.Expression):
         # TODO: handle open/half-open sets
 
         assert start.is_evaluable(), "bounds of inverval must be evaluable"
@@ -142,7 +142,7 @@ class Interval(Set):
         return self._start_appr <= other._start_appr \
             and self._end_appr >= other._end_appr
 
-    def contains(self, other: Node) -> bool:
+    def contains(self, other: Expression) -> bool:
         if not other.is_evaluable():
             raise TypeError(f"cannot evaluate {other}")
 

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from sbmath.ops.polynomial import match_polynomial_from_predicate, find_roots
 from sbmath.ops.simplify import simplify
-from sbmath.tree import Equality, FunctionWildcard, Wildcard, Value
+from sbmath.expression import Equality, FunctionWildcard, Wildcard, Value, Expression
 from sbmath.std import std
 
 inverse_functions = {
@@ -11,12 +11,12 @@ inverse_functions = {
 }
 
 
-def to_autonomous(equation: Equality) -> Node:
+def to_autonomous(equation: Equality) -> Expression:
     return equation.left - equation.right
 
 
-def _solve_no_reduce(equation: Equality, unknown: Variable) -> list[Node]:
-    equation = simplify(equation)  # should have unfolded any NodeFunction in the equation
+def _solve_no_reduce(equation: Equality, unknown: Variable) -> list[Expression]:
+    equation = simplify(equation)  # should have unfolded any ExpressionFunction in the equation
 
     m = Equality(unknown, Wildcard("x", constant_with=unknown)).matches(equation)
     if m:
@@ -47,5 +47,5 @@ def _solve_no_reduce(equation: Equality, unknown: Variable) -> list[Node]:
     raise NotImplementedError(f"could not solve the equation. {equation = }, ")
 
 
-def solve(equation: Equality, unknown: Variable) -> Sequence[Node]:
+def solve(equation: Equality, unknown: Variable) -> Sequence[Expression]:
     return [simplify(solution) for solution in _solve_no_reduce(equation, unknown)]

@@ -3,10 +3,10 @@ from __future__ import annotations
 from typing import Optional
 
 import sbmath.ops.polynomial.core
-from sbmath.tree import Node
+from sbmath.expression import Expression
 
 VariableExponents = tuple[int, ...]
-Monomial = tuple[tuple[int, ...], Node]
+Monomial = tuple[tuple[int, ...], Expression]
 
 
 def exponents_mul(a: VariableExponents, b: VariableExponents) -> VariableExponents:

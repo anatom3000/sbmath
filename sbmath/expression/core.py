@@ -14,7 +14,7 @@ from numbers import Real
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 
-from sbmath.tree.context import MissingContextError, Context
+from sbmath.expression.context import MissingContextError, Context
 from sbmath import _utils
 from sbmath.computation import fraction
 
@@ -22,7 +22,7 @@ from sbmath.computation import fraction
 from sbmath._utils import debug, inc_indent, dec_indent
 
 
-class Node(ABC):
+class Expression(ABC):
     context: Optional[Context] = None
 
     def __neg__(self):
@@ -30,120 +30,120 @@ class Node(ABC):
         result.context = self.context
         return result
 
-    def __add__(self, other) -> Node:
+    def __add__(self, other) -> Expression:
         if isinstance(other, Real):
-            other = Node.from_float(float(other))
+            other = Expression.from_float(float(other))
             other.context = self.context
             return AddAndSub.add(self, context)
-        elif isinstance(other, Node):
+        elif isinstance(other, Expression):
             result = AddAndSub.add(self, other)
             result.context = self.context
             return result
         else:
             return NotImplemented
 
-    def __radd__(self, other) -> Node:
+    def __radd__(self, other) -> Expression:
         if isinstance(other, Real):
-            result = AddAndSub.add(Node.from_float(float(other)), self)
+            result = AddAndSub.add(Expression.from_float(float(other)), self)
             result.context = self.context
             return result
-        elif isinstance(other, Node):
+        elif isinstance(other, Expression):
             result = AddAndSub.add(other, self)
             result.context = other.context
             return result
         else:
             return NotImplemented
 
-    def __sub__(self, other) -> Node:
+    def __sub__(self, other) -> Expression:
         if isinstance(other, Real):
-            result = AddAndSub.sub(self, Node.from_float(float(other)))
+            result = AddAndSub.sub(self, Expression.from_float(float(other)))
             result.context = self.context
             return result
-        elif isinstance(other, Node):
+        elif isinstance(other, Expression):
             result = AddAndSub.sub(self, other)
             result.context = self.context
             return result
         else:
             return NotImplemented
 
-    def __rsub__(self, other) -> Node:
+    def __rsub__(self, other) -> Expression:
         if isinstance(other, Real):
-            result = AddAndSub.sub(Node.from_float(float(other)), self)
+            result = AddAndSub.sub(Expression.from_float(float(other)), self)
             result.context = self.context
             return result
-        elif isinstance(other, Node):
+        elif isinstance(other, Expression):
             result = AddAndSub.sub(other, self)
             result.context = other.context
             return result
         else:
             return NotImplemented
 
-    def __mul__(self, other) -> Node:
+    def __mul__(self, other) -> Expression:
         if isinstance(other, Real):
-            result = MulAndDiv.mul(self, Node.from_float(float(other)))
+            result = MulAndDiv.mul(self, Expression.from_float(float(other)))
             result.context = self.context
             return result
-        elif isinstance(other, Node):
+        elif isinstance(other, Expression):
             result = MulAndDiv.mul(self, other)
             result.context = self.context
             return result
         else:
             return NotImplemented
 
-    def __rmul__(self, other) -> Node:
+    def __rmul__(self, other) -> Expression:
         if isinstance(other, Real):
-            result = MulAndDiv.mul(Node.from_float(float(other)), self)
+            result = MulAndDiv.mul(Expression.from_float(float(other)), self)
             result.context = self.context
             return result
-        elif isinstance(other, Node):
+        elif isinstance(other, Expression):
             result = MulAndDiv.mul(other, self)
             result.context = other.context
             return result
         else:
             return NotImplemented
 
-    def __truediv__(self, other) -> Node:
+    def __truediv__(self, other) -> Expression:
         if isinstance(other, Real):
-            result = MulAndDiv.div(self, Node.from_float(float(other)))
+            result = MulAndDiv.div(self, Expression.from_float(float(other)))
             result.context = self.context
             return result
-        elif isinstance(other, Node):
+        elif isinstance(other, Expression):
             result = MulAndDiv.div(self, other)
             result.context = self.context
             return result
         else:
             return NotImplemented
 
-    def __rtruediv__(self, other) -> Node:
+    def __rtruediv__(self, other) -> Expression:
         if isinstance(other, Real):
-            result = MulAndDiv.div(Node.from_float(float(other)), self)
+            result = MulAndDiv.div(Expression.from_float(float(other)), self)
             result.context = self.context
             return result
-        elif isinstance(other, Node):
+        elif isinstance(other, Expression):
             result = MulAndDiv.div(other, self)
             result.context = other.context
             return result
         else:
             return NotImplemented
 
-    def __pow__(self, other) -> Node:
+    def __pow__(self, other) -> Expression:
         if isinstance(other, Real):
-            result = Pow(self, Node.from_float(float(other)))
+            result = Pow(self, Expression.from_float(float(other)))
             result.context = self.context
             return result
-        elif isinstance(other, Node):
+        elif isinstance(other, Expression):
             result = Pow(self, other)
             result.context = self.context
             return result
         else:
             return NotImplemented
 
-    def __rpow__(self, other) -> Node:
+    def __rpow__(self, other) -> Expression:
         if isinstance(other, Real):
-            result = Pow(Node.from_float(float(other)), self)
+            result = Pow(Expression.from_float(float(other)), self)
             result.context = self.context
             return result
-        elif isinstance(other, Node):
+        elif isinstance(other, Expression):
             result = Pow(other, self)
             result.context = other.context
             return result
@@ -165,7 +165,7 @@ class Node(ABC):
         return MulAndDiv.div(Value(num), Value(denom))
 
     @abstractmethod
-    def __eq__(self, other: Node) -> bool:
+    def __eq__(self, other: Expression) -> bool:
         pass
 
     @abstractmethod
@@ -173,7 +173,7 @@ class Node(ABC):
         pass
 
     @abstractmethod
-    def evaluate(self) -> Node:
+    def evaluate(self) -> Expression:
         pass
 
     @abstractmethod
@@ -181,16 +181,16 @@ class Node(ABC):
         pass
 
     @abstractmethod
-    def matches(self, value: Node, state: MatchResult = None, *, evaluate: bool = True, reduce: bool = True) \
+    def matches(self, value: Expression, state: MatchResult = None, *, evaluate: bool = True, reduce: bool = True) \
             -> Optional[MatchResult]:
         pass
 
     @abstractmethod
-    def _replace_identifiers(self, match_result: MatchResult) -> Node:
+    def _replace_identifiers(self, match_result: MatchResult) -> Expression:
         pass
 
-    def morph(self, old_pattern: Node, new_pattern: Node, *, evaluate: bool = True, reduce: bool = True) \
-            -> Optional[Node]:
+    def morph(self, old_pattern: Expression, new_pattern: Expression, *, evaluate: bool = True, reduce: bool = True) \
+            -> Optional[Expression]:
         m = old_pattern.matches(self, evaluate=evaluate, reduce=reduce)
         if m is None:
             return None
@@ -201,7 +201,7 @@ class Node(ABC):
             return None
         return new
 
-    def replace(self, old_pattern: Node, new_pattern: Node, *, evaluate: bool = True, reduce: bool = True) -> Node:
+    def replace(self, old_pattern: Expression, new_pattern: Expression, *, evaluate: bool = True, reduce: bool = True) -> Expression:
         m = old_pattern.matches(self, evaluate=evaluate, reduce=reduce)
         if m:
             new = new_pattern._replace_identifiers(m)
@@ -211,10 +211,10 @@ class Node(ABC):
         return new._replace_in_children(old_pattern, new_pattern, evaluate, reduce)
 
     @abstractmethod
-    def _replace_in_children(self, old_pattern: Node, new_pattern: Node, evaluate: bool, reduce: bool) -> Node:
+    def _replace_in_children(self, old_pattern: Expression, new_pattern: Expression, evaluate: bool, reduce: bool) -> Expression:
         pass
 
-    def substitute(self, pattern: Node, new: Node, *, evaluate: bool = True, reduce: bool = True) -> Node:
+    def substitute(self, pattern: Expression, new: Expression, *, evaluate: bool = True, reduce: bool = True) -> Expression:
         m = pattern.matches(self, evaluate=evaluate, reduce=reduce)
         if m:
             return new._replace_identifiers(m)
@@ -222,19 +222,19 @@ class Node(ABC):
             return self._substitute_in_children(pattern, new, evaluate, reduce)
 
     @abstractmethod
-    def _substitute_in_children(self, pattern: Node, new: Node, evaluate: bool, reduce: bool) -> Node:
+    def _substitute_in_children(self, pattern: Expression, new: Expression, evaluate: bool, reduce: bool) -> Expression:
         pass
 
     @abstractmethod
-    def reduce(self, depth=-1, *, evaluate: bool = True) -> Node:
+    def reduce(self, depth=-1, *, evaluate: bool = True) -> Expression:
         pass
 
     @abstractmethod
-    def contains(self, pattern: Node, *, evaluate: bool = True, reduce: bool = True) -> bool:
+    def contains(self, pattern: Expression, *, evaluate: bool = True, reduce: bool = True) -> bool:
         pass
 
-    def apply_on(self, pattern: Node, modifier: Callable[[MatchResult], Node], *, evaluate: bool = True,
-                 reduce: bool = True) -> Node:
+    def apply_on(self, pattern: Expression, modifier: Callable[[MatchResult], Expression], *, evaluate: bool = True,
+                 reduce: bool = True) -> Expression:
         m = pattern.matches(self, evaluate=evaluate, reduce=reduce)
         if m:
             new = modifier(m)
@@ -244,13 +244,13 @@ class Node(ABC):
         return new._apply_on_children(pattern, modifier, evaluate, reduce)
 
     @abstractmethod
-    def _apply_on_children(self, pattern: Node, modifier: Callable[[MatchResult], Node], evaluate: bool,
-                           reduce: bool) -> Node:
+    def _apply_on_children(self, pattern: Expression, modifier: Callable[[MatchResult], Expression], evaluate: bool,
+                           reduce: bool) -> Expression:
         pass
 
 
-class Leaf(Node, ABC):
-    def matches(self, value: Node, state: MatchResult = None, *, evaluate: bool = True, reduce: bool = True) \
+class Leaf(Expression, ABC):
+    def matches(self, value: Expression, state: MatchResult = None, *, evaluate: bool = True, reduce: bool = True) \
             -> Optional[MatchResult]:
         if state is None:
             state = MatchResult()
@@ -269,53 +269,53 @@ class Leaf(Node, ABC):
     def __str__(self):
         return str(self.data)
 
-    def reduce(self, depth=-1, *, evaluate: bool = True) -> Node:
+    def reduce(self, depth=-1, *, evaluate: bool = True) -> Expression:
         return self
 
-    def contains(self, pattern: Node, *, evaluate: bool = True, reduce: bool = True) -> bool:
+    def contains(self, pattern: Expression, *, evaluate: bool = True, reduce: bool = True) -> bool:
         return pattern.matches(self, evaluate=evaluate, reduce=reduce) is not None
 
-    def _replace_identifiers(self, match_result: MatchResult) -> Node:
+    def _replace_identifiers(self, match_result: MatchResult) -> Expression:
         return self
 
-    def _replace_in_children(self, old_pattern: Node, new_pattern: Node, evaluate: bool, reduce: bool = True) -> Node:
+    def _replace_in_children(self, old_pattern: Expression, new_pattern: Expression, evaluate: bool, reduce: bool = True) -> Expression:
         return self
 
-    def _substitute_in_children(self, pattern: Node, new: Node, evaluate: bool, reduce: bool = True) -> Node:
+    def _substitute_in_children(self, pattern: Expression, new: Expression, evaluate: bool, reduce: bool = True) -> Expression:
         return self
 
-    def _apply_on_children(self, pattern: Node, modifier: Callable[[MatchResult], Node], evaluate: bool,
-                           reduce: bool) -> Node:
+    def _apply_on_children(self, pattern: Expression, modifier: Callable[[MatchResult], Expression], evaluate: bool,
+                           reduce: bool) -> Expression:
         return self
 
     def __init__(self, data):
         self.data = data
 
 
-class AdvancedBinOp(Node, ABC):
+class AdvancedBinOp(Expression, ABC):
     base_operation_symbol: str
     inverse_operation_symbol: str
     constant_term_last: bool
 
-    identity: Node
-    absorbing_element: Optional[Node] = None
+    identity: Expression
+    absorbing_element: Optional[Expression] = None
 
     @staticmethod
     @abstractmethod
-    def _invert_value(value: Node) -> Node:
+    def _invert_value(value: Expression) -> Expression:
         pass
 
     @staticmethod
     @abstractmethod
-    def _repeat_value(value: Node, times: int) -> Node:
+    def _repeat_value(value: Expression, times: int) -> Expression:
         pass
 
     @staticmethod
     @abstractmethod
-    def _should_invert_value(value: Node) -> bool:
+    def _should_invert_value(value: Expression) -> bool:
         pass
 
-    def reduce(self, depth=-1, *, evaluate: bool = True) -> Node:
+    def reduce(self, depth=-1, *, evaluate: bool = True) -> Expression:
         if depth == 0:
             return self
 
@@ -354,15 +354,15 @@ class AdvancedBinOp(Node, ABC):
 
         debug(f"{non_eval_part = }", flag='reduce')
 
-        value_occurences: defaultdict[Node, int] = defaultdict(int)
+        value_occurences: defaultdict[Expression, int] = defaultdict(int)
 
         for occurence in non_eval_part.base_values:
             reduced = occurence.reduce(depth - 1, evaluate=evaluate)
             if isinstance(reduced, type(non_eval_part)):
-                v: Node
+                v: Expression
                 for v in reduced.base_values:
                     value_occurences[v] += 1
-                v: Node
+                v: Expression
                 for v in reduced.inverted_values:
                     value_occurences[v] -= 1
             else:
@@ -447,7 +447,7 @@ class AdvancedBinOp(Node, ABC):
         return type(self)(base_values, inverted_values)
 
     # --- MATCH INTERNAL FUNCTIONS ---
-    def _match_evaluable(self, value: Node, state: MatchResult = None) -> Optional[MatchResult]:
+    def _match_evaluable(self, value: Expression, state: MatchResult = None) -> Optional[MatchResult]:
         return state if self.evaluate() == value.evaluate() else None
 
     def _match_no_wildcards(self, value: AdvancedBinOp, state: MatchResult, evaluate: bool, reduce: bool) \
@@ -511,7 +511,7 @@ class AdvancedBinOp(Node, ABC):
 
         return new_state, remaining_pattern, remaining_value
 
-    def _remove_wildcard_match(self, value: Node, value_index: int, wildcard: Wildcard,
+    def _remove_wildcard_match(self, value: Expression, value_index: int, wildcard: Wildcard,
                                base_match_table: _utils.BiMultiDict, inverted_match_table: _utils.BiMultiDict,
                                state: MatchResult, evaluate: bool, reduce: bool, inverted: bool) \
             -> Optional[_utils.BiMultiDict, _utils.BiMultiDict, MatchResult]:
@@ -821,7 +821,7 @@ class AdvancedBinOp(Node, ABC):
 
         return state
 
-    def _match_no_reduce(self, value: Node, state: MatchResult, evaluate: bool, reduce: bool):
+    def _match_no_reduce(self, value: Expression, state: MatchResult, evaluate: bool, reduce: bool):
         if evaluate and self.is_evaluable() and value.is_evaluable():
             debug(f"both self and value are evaluable, matching direcly...", flag='match')
             return self._match_evaluable(value, state)
@@ -871,7 +871,7 @@ class AdvancedBinOp(Node, ABC):
 
     # --- END MATCH INTERNAL FUNCTIONS ---
 
-    def matches(self, value: Node, state: MatchResult = None, *, evaluate: bool = True, reduce: bool = True) -> \
+    def matches(self, value: Expression, state: MatchResult = None, *, evaluate: bool = True, reduce: bool = True) -> \
             Optional[MatchResult]:
 
         debug(f"Matching pattern {self} with value {value}", flag='match')
@@ -911,13 +911,13 @@ class AdvancedBinOp(Node, ABC):
         dec_indent()
         return m
 
-    def _replace_identifiers(self, match_result: MatchResult) -> Node:
+    def _replace_identifiers(self, match_result: MatchResult) -> Expression:
         return type(self)(
             base_values=(x._replace_identifiers(match_result) for x in self.base_values),
             inverted_values=(x._replace_identifiers(match_result) for x in self.inverted_values)
         )
 
-    def _replace_in_children(self, old_pattern: Node, new_pattern: Node, evaluate: bool, reduce: bool) -> Node:
+    def _replace_in_children(self, old_pattern: Expression, new_pattern: Expression, evaluate: bool, reduce: bool) -> Expression:
         return type(self)(
             base_values=(x.replace(old_pattern, new_pattern, evaluate=evaluate, reduce=reduce) for x in
                          self.base_values),
@@ -925,14 +925,14 @@ class AdvancedBinOp(Node, ABC):
                              self.inverted_values)
         )
 
-    def _substitute_in_children(self, pattern: Node, new: Node, evaluate: bool, reduce: bool) -> Node:
+    def _substitute_in_children(self, pattern: Expression, new: Expression, evaluate: bool, reduce: bool) -> Expression:
         return type(self)(
             base_values=(x.substitute(pattern, new, evaluate=evaluate, reduce=reduce) for x in self.base_values),
             inverted_values=(x.substitute(pattern, new, evaluate=evaluate, reduce=reduce) for x in self.inverted_values)
         )
 
-    def _apply_on_children(self, pattern: Node, modifier: Callable[[MatchResult], Node], evaluate: bool,
-                           reduce: bool) -> Node:
+    def _apply_on_children(self, pattern: Expression, modifier: Callable[[MatchResult], Expression], evaluate: bool,
+                           reduce: bool) -> Expression:
         return type(self)(
             base_values=(x.apply_on(pattern, modifier, evaluate=evaluate, reduce=reduce) for x in self.base_values),
             inverted_values=(x.apply_on(pattern, modifier, evaluate=evaluate, reduce=reduce) for x in
@@ -942,7 +942,7 @@ class AdvancedBinOp(Node, ABC):
     def is_evaluable(self) -> bool:
         return all(c.is_evaluable() for c in itertools.chain(self.base_values, self.inverted_values))
 
-    def contains(self, pattern: Node, *, evaluate: bool = True, reduce: bool = True) -> bool:
+    def contains(self, pattern: Expression, *, evaluate: bool = True, reduce: bool = True) -> bool:
         return pattern.matches(self, evaluate=evaluate, reduce=reduce) is not None or any(
             c.contains(pattern, evaluate=evaluate, reduce=reduce) for c in
             itertools.chain(self.base_values, self.inverted_values))
@@ -963,7 +963,7 @@ class AdvancedBinOp(Node, ABC):
 
     @staticmethod
     @abstractmethod
-    def _put_parentheses(value: Node) -> bool:
+    def _put_parentheses(value: Expression) -> bool:
         pass
 
     def __str__(self):
@@ -1010,9 +1010,9 @@ class AdvancedBinOp(Node, ABC):
         for value in self.inverted_values:
             value.context = new
 
-    def __init__(self, base_values: Iterable[Node] = None, inverted_values: Iterable[Node] = None):
-        self.base_values: list[Node] = []
-        self.inverted_values: list[Node] = []
+    def __init__(self, base_values: Iterable[Expression] = None, inverted_values: Iterable[Expression] = None):
+        self.base_values: list[Expression] = []
+        self.inverted_values: list[Expression] = []
 
         if base_values is not None:
             for val in base_values:
@@ -1038,16 +1038,16 @@ class AdvancedBinOp(Node, ABC):
             return
 
 
-class BinOp(Node, ABC):
+class BinOp(Expression, ABC):
     name: str
 
-    right_identity: Node
+    right_identity: Expression
 
-    left_absorbing_element: Optional[Node] = None
-    left_absorbing_result: Optional[Node] = None
+    left_absorbing_element: Optional[Expression] = None
+    left_absorbing_result: Optional[Expression] = None
 
-    right_absorbing_element: Optional[Node] = None
-    right_absorbing_result: Optional[Node] = None
+    right_absorbing_element: Optional[Expression] = None
+    right_absorbing_result: Optional[Expression] = None
 
     def __eq__(self, other):
         if not isinstance(other, type(self)):
@@ -1055,7 +1055,7 @@ class BinOp(Node, ABC):
 
         return self.left == other.left and self.right == other.right
 
-    def reduce(self, depth=-1, *, evaluate: bool = True) -> Node:
+    def reduce(self, depth=-1, *, evaluate: bool = True) -> Expression:
         if depth == 0:
             return self
 
@@ -1077,14 +1077,14 @@ class BinOp(Node, ABC):
                     return reduced_left
         else:
             if isinstance(reduced_left, Value) and isinstance(reduced_right, Value):
-                return Node.from_float(self.approximator(reduced_left.data, reduced_right.data))
+                return Expression.from_float(self.approximator(reduced_left.data, reduced_right.data))
 
             if reduced_right == self.right_identity:
                 return reduced_left
 
         return type(self)(reduced_left, reduced_right)
 
-    def _match_no_reduce(self, value: Node, state: MatchResult, evaluate: bool, reduce: bool) -> Optional[MatchResult]:
+    def _match_no_reduce(self, value: Expression, state: MatchResult, evaluate: bool, reduce: bool) -> Optional[MatchResult]:
 
         if evaluate and self.is_evaluable() and value.is_evaluable():
             return state if reduced_self.evaluate() == reduced_value.evaluate() else None
@@ -1103,7 +1103,7 @@ class BinOp(Node, ABC):
 
         return right_match
 
-    def matches(self, value: Node, state: MatchResult = None, *, evaluate: bool = True, reduce: bool = True) -> \
+    def matches(self, value: Expression, state: MatchResult = None, *, evaluate: bool = True, reduce: bool = True) -> \
             Optional[MatchResult]:
         if state is None:
             state = MatchResult()
@@ -1121,23 +1121,23 @@ class BinOp(Node, ABC):
         return reduced_self._match_no_reduce(reduced_value, state, evaluate, reduce)
 
     # noinspection PyProtectedMember
-    def _replace_identifiers(self, match_result: MatchResult) -> Node:
+    def _replace_identifiers(self, match_result: MatchResult) -> Expression:
         return type(self)(self.left._replace_identifiers(match_result), self.right._replace_identifiers(match_result))
 
-    def _replace_in_children(self, old_pattern: Node, new_pattern: Node, evaluate: bool, reduce: bool) -> Node:
+    def _replace_in_children(self, old_pattern: Expression, new_pattern: Expression, evaluate: bool, reduce: bool) -> Expression:
         return type(self)(
             self.left.replace(old_pattern, new_pattern, evaluate=evaluate, reduce=reduce),
             self.right.replace(old_pattern, new_pattern, evaluate=evaluate, reduce=reduce)
         )
 
-    def _substitute_in_children(self, pattern: Node, new: Node, evaluate: bool, reduce: bool) -> Node:
+    def _substitute_in_children(self, pattern: Expression, new: Expression, evaluate: bool, reduce: bool) -> Expression:
         return type(self)(
             self.left.substitute(pattern, new, evaluate=evaluate, reduce=reduce),
             self.right.substitute(pattern, new, evaluate=evaluate, reduce=reduce)
         )
 
-    def _apply_on_children(self, pattern: Node, modifier: Callable[[MatchResult], Node], evaluate: bool,
-                           reduce: bool) -> Node:
+    def _apply_on_children(self, pattern: Expression, modifier: Callable[[MatchResult], Expression], evaluate: bool,
+                           reduce: bool) -> Expression:
         return type(self)(
             self.left.apply_on(pattern, modifier, evaluate=evaluate, reduce=reduce),
             self.right.apply_on(pattern, modifier, evaluate=evaluate, reduce=reduce)
@@ -1146,7 +1146,7 @@ class BinOp(Node, ABC):
     def is_evaluable(self) -> bool:
         return self.left.is_evaluable() and self.right.is_evaluable()
 
-    def contains(self, pattern: Node, *, evaluate: bool = True, reduce: bool = True) -> bool:
+    def contains(self, pattern: Expression, *, evaluate: bool = True, reduce: bool = True) -> bool:
         return pattern.matches(self, evaluate=evaluate, reduce=reduce) is not None \
             or self.left.contains(pattern, evaluate=evaluate, reduce=reduce) \
             or self.right.contains(pattern, evaluate=evaluate, reduce=reduce)
@@ -1162,7 +1162,7 @@ class BinOp(Node, ABC):
         self.left.context = new
         self.right.context = new
 
-    def __init__(self, left: Node, right: Node):
+    def __init__(self, left: Expression, right: Expression):
         self.left = left
         self.right = right
 
@@ -1178,7 +1178,7 @@ class BinOp(Node, ABC):
 
     @staticmethod
     @abstractmethod
-    def _put_parentheses(value: Node, right: bool) -> bool:
+    def _put_parentheses(value: Expression, right: bool) -> bool:
         pass
 
     def __str__(self):
@@ -1205,7 +1205,7 @@ class Value(Leaf):
     def is_evaluable(self) -> bool:
         return True
 
-    def evaluate(self) -> Node:
+    def evaluate(self) -> Expression:
         return self
 
     def approximate(self) -> float:
@@ -1217,7 +1217,7 @@ class Variable(Leaf):
         return self.context is not None \
             and (self.data in self.context.variables.keys() or self.data in self.context.constants.keys())
 
-    def evaluate(self) -> Node:
+    def evaluate(self) -> Expression:
         if self.context is None:
             raise MissingContextError(f"can't evaluate variable '{self.data}' without context")
 
@@ -1232,7 +1232,7 @@ class Variable(Leaf):
 
         return self
 
-    def reduce(self, depth=-1, *, evaluate: bool = True) -> Node:
+    def reduce(self, depth=-1, *, evaluate: bool = True) -> Expression:
         return self
 
     def approximate(self) -> float:
@@ -1251,7 +1251,7 @@ class Variable(Leaf):
         return self.context.variables[self.data].evaluate()
 
 
-class Wildcard(Node):
+class Wildcard(Expression):
     def __eq__(self, other):
         if not isinstance(other, Wildcard):
             return NotImplemented
@@ -1261,10 +1261,10 @@ class Wildcard(Node):
     def __hash__(self):
         return hash((self.__class__.__name__, self.name, frozenset(self.constraints.items())))
 
-    def contains(self, pattern: Node, *, evaluate: bool = True, reduce: bool = True) -> bool:
+    def contains(self, pattern: Expression, *, evaluate: bool = True, reduce: bool = True) -> bool:
         return pattern.matches(self, evaluate=evaluate, reduce=reduce) is not None
 
-    def _match_contraints(self, value: Node, evaluate: bool, reduce: bool) -> bool:
+    def _match_contraints(self, value: Expression, evaluate: bool, reduce: bool) -> bool:
 
         if "eval" in self.constraints.keys():
             if self.constraints["eval"] == Value(1) and not value.is_evaluable():
@@ -1300,7 +1300,7 @@ class Wildcard(Node):
 
         return True
 
-    def _match_no_reduce(self, value: Node, state: MatchResult, evaluate: bool, reduce: bool) \
+    def _match_no_reduce(self, value: Expression, state: MatchResult, evaluate: bool, reduce: bool) \
             -> Optional[MatchResult]:
         if self.name == '_':
             return state if self._match_contraints(value, evaluate, reduce) else None
@@ -1315,7 +1315,7 @@ class Wildcard(Node):
 
         return None
 
-    def matches(self, value: Node, state: MatchResult = None, *, evaluate: bool = True, reduce: bool = True) \
+    def matches(self, value: Expression, state: MatchResult = None, *, evaluate: bool = True, reduce: bool = True) \
             -> Optional[MatchResult]:
         if state is None:
             state = MatchResult()
@@ -1330,32 +1330,32 @@ class Wildcard(Node):
 
         return self._match_no_reduce(value.reduce(evaluate=evaluate), state, evaluate, reduce)
 
-    def _replace_identifiers(self, match_result: MatchResult) -> Node:
+    def _replace_identifiers(self, match_result: MatchResult) -> Expression:
         if self.name not in match_result.wildcards:
             return self
 
         return match_result.wildcards[self.name]
 
-    def _replace_in_children(self, old_pattern: Node, new_pattern: Node, evaluate: bool, reduce: bool = True) -> Node:
+    def _replace_in_children(self, old_pattern: Expression, new_pattern: Expression, evaluate: bool, reduce: bool = True) -> Expression:
         return self
 
-    def _substitute_in_children(self, pattern: Node, new: Node, evaluate: bool, reduce: bool) -> Node:
+    def _substitute_in_children(self, pattern: Expression, new: Expression, evaluate: bool, reduce: bool) -> Expression:
         return self
 
-    def _apply_on_children(self, pattern: Node, modifier: Callable[[MatchResult], Node], evaluate: bool,
-                           reduce: bool) -> Node:
+    def _apply_on_children(self, pattern: Expression, modifier: Callable[[MatchResult], Expression], evaluate: bool,
+                           reduce: bool) -> Expression:
         return self
 
     def is_evaluable(self) -> bool:
         return False
 
-    def evaluate(self) -> Node:
+    def evaluate(self) -> Expression:
         raise TypeError(f"can't evaluate {type(self)}")
 
     def approximate(self) -> float:
         raise TypeError(f"can't approximate {type(self)}")
 
-    def reduce(self, depth=-1, *, evaluate: bool = True) -> Node:
+    def reduce(self, depth=-1, *, evaluate: bool = True) -> Expression:
         return self
 
     def __str__(self):
@@ -1379,7 +1379,7 @@ class Wildcard(Node):
         for c in self.constraints.keys():
             self.constraints[c].context = new
 
-    def __init__(self, name: str, **constraints: Node):
+    def __init__(self, name: str, **constraints: Expression):
         self.name = name
         self.constraints = constraints
 
@@ -1397,15 +1397,15 @@ class AddAndSub(AdvancedBinOp):
     identity = Value(0)
 
     @staticmethod
-    def _invert_value(value: Node) -> Node:
+    def _invert_value(value: Expression) -> Expression:
         return -value
 
     @staticmethod
-    def _repeat_value(value: Node, times: int) -> Node:
-        return MulAndDiv.mul(Node.from_float(times), value)
+    def _repeat_value(value: Expression, times: int) -> Expression:
+        return MulAndDiv.mul(Expression.from_float(times), value)
 
     @staticmethod
-    def _should_invert_value(value: Node) -> bool:
+    def _should_invert_value(value: Expression) -> bool:
         if isinstance(value, Value):
             return value.data < 0
 
@@ -1415,17 +1415,17 @@ class AddAndSub(AdvancedBinOp):
         return False
 
     @classmethod
-    def add(cls, *values: Node):
+    def add(cls, *values: Expression):
         return cls(base_values=values)
 
     @classmethod
-    def sub(cls, *values: Node, positive_first_node: bool = True):
-        if positive_first_node:
+    def sub(cls, *values: Expression, positive_first_term: bool = True):
+        if positive_first_term:
             return cls(base_values=values[:1], inverted_values=values[1:])
         else:
             return cls(inverted_values=values)
 
-    def evaluate(self) -> Node:
+    def evaluate(self) -> Expression:
         evaluated_fraction = [0, 1]
         others = Value(0)
         for c in self.base_values:
@@ -1474,7 +1474,7 @@ class AddAndSub(AdvancedBinOp):
 
         return result
 
-    def replace(self, old_pattern: Node, new_pattern: Node, *, evaluate: bool = True, reduce: bool = True) -> Node:
+    def replace(self, old_pattern: Expression, new_pattern: Expression, *, evaluate: bool = True, reduce: bool = True) -> Expression:
         m = old_pattern.matches(self, evaluate=evaluate, reduce=reduce)
         if m:
             new = new_pattern._replace_identifiers(m)
@@ -1492,7 +1492,7 @@ class AddAndSub(AdvancedBinOp):
         return new._replace_in_children(old_pattern, new_pattern, evaluate, reduce)
 
     @staticmethod
-    def _put_parentheses(value: Node) -> bool:
+    def _put_parentheses(value: Expression) -> bool:
         # addition/substraction always have the lowest precedence
         return False
 
@@ -1503,8 +1503,8 @@ class AddAndSub(AdvancedBinOp):
 
     def __add__(self, other):
         if isinstance(other, Real):
-            result = AddAndSub(self.base_values + [Node.from_float(float(other))], self.inverted_values)
-        elif isinstance(other, Node):
+            result = AddAndSub(self.base_values + [Expression.from_float(float(other))], self.inverted_values)
+        elif isinstance(other, Expression):
             result = AddAndSub(self.base_values + [other], self.inverted_values)
         else:
             return NotImplemented
@@ -1515,7 +1515,7 @@ class AddAndSub(AdvancedBinOp):
         if isinstance(other, Real):
             # noinspection PyTypeChecker
             result = AddAndSub([Value(other)] + self.base_values, self.inverted_values)
-        elif isinstance(other, Node):
+        elif isinstance(other, Expression):
             result = AddAndSub([other] + self.base_values, self.inverted_values)
         else:
             return NotImplemented
@@ -1524,8 +1524,8 @@ class AddAndSub(AdvancedBinOp):
 
     def __sub__(self, other):
         if isinstance(other, Real):
-            result = AddAndSub(self.base_values, self.inverted_values + [Node.from_float(float(other))])
-        elif isinstance(other, Node):
+            result = AddAndSub(self.base_values, self.inverted_values + [Expression.from_float(float(other))])
+        elif isinstance(other, Expression):
             result = AddAndSub(self.base_values, self.inverted_values + [other])
         else:
             return NotImplemented
@@ -1536,7 +1536,7 @@ class AddAndSub(AdvancedBinOp):
         if isinstance(other, Real):
             # noinspection PyTypeChecker
             result = AddAndSub([Value(other)] + self.inverted_values, self.base_values)
-        elif isinstance(other, Node):
+        elif isinstance(other, Expression):
             result = AddAndSub([other] + self.inverted_values, self.base_values)
         else:
             return NotImplemented
@@ -1553,18 +1553,18 @@ class MulAndDiv(AdvancedBinOp):
     absorbing_element = Value(0)
 
     @staticmethod
-    def _repeat_value(value: Node, times: int) -> Node:
+    def _repeat_value(value: Expression, times: int) -> Expression:
         return Pow(value, Value(times))
 
     @staticmethod
-    def _invert_value(value: Node) -> Node:
+    def _invert_value(value: Expression) -> Expression:
         if isinstance(value, Value) and value.data in (-1, 1):
             return Value(value.data)
 
         return Value(1) / value
 
     @staticmethod
-    def _should_invert_value(value: Node) -> bool:
+    def _should_invert_value(value: Expression) -> bool:
         if isinstance(value, Value):
             return -1 < value.data < 1
 
@@ -1574,17 +1574,17 @@ class MulAndDiv(AdvancedBinOp):
         return False
 
     @classmethod
-    def mul(cls, *values: Node):
+    def mul(cls, *values: Expression):
         return cls(base_values=values)
 
     @classmethod
-    def div(cls, *values: Node, multiply_first_node: bool = True):
-        if multiply_first_node:
+    def div(cls, *values: Expression, multiply_first_factor: bool = True):
+        if multiply_first_factor:
             return cls(base_values=values[:1], inverted_values=values[1:])
         else:
             return cls(inverted_values=values)
 
-    def evaluate(self) -> Node:
+    def evaluate(self) -> Expression:
         numerator = Value(1)
         numerator_value = Value(1)
 
@@ -1617,7 +1617,7 @@ class MulAndDiv(AdvancedBinOp):
 
         return result
 
-    def replace(self, old_pattern: Node, new_pattern: Node, *, evaluate: bool = True, reduce: bool = True) -> Node:
+    def replace(self, old_pattern: Expression, new_pattern: Expression, *, evaluate: bool = True, reduce: bool = True) -> Expression:
         m = old_pattern.matches(self, evaluate=evaluate, reduce=reduce)
         if m:
             new = new_pattern._replace_identifiers(m)
@@ -1635,7 +1635,7 @@ class MulAndDiv(AdvancedBinOp):
         return new._replace_in_children(old_pattern, new_pattern, evaluate, reduce)
 
     @staticmethod
-    def _put_parentheses(value: Node) -> bool:
+    def _put_parentheses(value: Expression) -> bool:
         return isinstance(value, AddAndSub)
 
     def __neg__(self):
@@ -1645,10 +1645,10 @@ class MulAndDiv(AdvancedBinOp):
 
     def __mul__(self, other):
         if isinstance(other, Real):
-            result = MulAndDiv(self.base_values + [Node.from_float(float(other))], self.inverted_values)
+            result = MulAndDiv(self.base_values + [Expression.from_float(float(other))], self.inverted_values)
             result.context = self.context
             return result
-        elif isinstance(other, Node):
+        elif isinstance(other, Expression):
             result = MulAndDiv(self.base_values + [other], self.inverted_values)
             result.context = self.context
             return result
@@ -1658,10 +1658,10 @@ class MulAndDiv(AdvancedBinOp):
     def __rmul__(self, other):
         if isinstance(other, Real):
             # noinspection PyTypeChecker
-            result = MulAndDiv([Node.from_float(other)] + self.base_values, self.inverted_values)
+            result = MulAndDiv([Expression.from_float(other)] + self.base_values, self.inverted_values)
             result.context = self.context
             return result
-        elif isinstance(other, Node):
+        elif isinstance(other, Expression):
             result = MulAndDiv([other] + self.base_values, self.inverted_values)
             result.context = self.context
             return result
@@ -1670,10 +1670,10 @@ class MulAndDiv(AdvancedBinOp):
 
     def __div__(self, other):
         if isinstance(other, Real):
-            result = MulAndDiv(self.base_values, self.inverted_values + [Node.from_float(float(other))])
+            result = MulAndDiv(self.base_values, self.inverted_values + [Expression.from_float(float(other))])
             result.context = self.context
             return result
-        elif isinstance(other, Node):
+        elif isinstance(other, Expression):
             result = MulAndDiv(self.base_values, self.inverted_values + [other])
             result.context = self.context
             return result
@@ -1683,10 +1683,10 @@ class MulAndDiv(AdvancedBinOp):
     def __rsub__(self, other):
         if isinstance(other, Real):
             # noinspection PyTypeChecker
-            result = MulAndDiv([Node.from_float(other)] + self.inverted_values, self.base_values)
+            result = MulAndDiv([Expression.from_float(other)] + self.inverted_values, self.base_values)
             result.context = self.context
             return result
-        elif isinstance(other, Node):
+        elif isinstance(other, Expression):
             result = MulAndDiv([other] + self.inverted_values, self.base_values)
             result.context = self.context
             return result
@@ -1695,9 +1695,9 @@ class MulAndDiv(AdvancedBinOp):
 
     def __str__(self):
         if (not self.inverted_values) and len(self.base_values) == 2:
-            if self.base_values[0] == Node.from_float(-1):
+            if self.base_values[0] == Expression.from_float(-1):
                 return f"-{self.base_values[1]}"
-            if self.base_values[1] == Node.from_float(-1):
+            if self.base_values[1] == Expression.from_float(-1):
                 return f"-{self.base_values[0]}"
 
         return super().__str__()
@@ -1714,7 +1714,7 @@ class Pow(BinOp):
     right_absorbing_element = Value(0)
     right_absorbing_result = Value(1)
 
-    def evaluate(self) -> Node:
+    def evaluate(self) -> Expression:
         eval_left = self.left.evaluate()
         eval_right = self.right.evaluate()
 
@@ -1736,7 +1736,7 @@ class Pow(BinOp):
         return left ** right
 
     @staticmethod
-    def _put_parentheses(value: Node, right: bool) -> bool:
+    def _put_parentheses(value: Expression, right: bool) -> bool:
         return isinstance(value, AddAndSub) \
             or isinstance(value, MulAndDiv) \
             or (isinstance(value, Value) and value.data < 0) \
@@ -1745,7 +1745,7 @@ class Pow(BinOp):
 
 @dataclass
 class MatchResult:
-    wildcards: dict[str, Node] = field(default_factory=dict)
+    wildcards: dict[str, Expression] = field(default_factory=dict)
     functions_wildcards: dict[str, Function] = field(default_factory=dict)
     weak: bool = False
 

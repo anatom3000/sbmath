@@ -35,7 +35,7 @@ $ pip install -r requirements.txt
 
 ### API Progress
 
-|  Protocols | `Node.reduce` | `Node.matches` | `Node.contains` | `Node.replace` |
+|  Protocols | `Expression.reduce` | `Expression.matches` | `Expression.contains` | `Expression.replace` |
 |-----------:|:-------------:|:--------------:|:---------------:|:--------------:|
 | `AdvBinOp` |      Yes      |      Yes       |       Yes       |      Yes       |
 |      `Pow` |      Yes      |      Yes       |       Yes       |      Yes       |

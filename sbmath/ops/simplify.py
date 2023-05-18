@@ -1,5 +1,5 @@
 from sbmath import parse
-from sbmath.tree import Node
+from sbmath.expression import Expression
 
 _common_factor_pat = parse("[k]*[a, eval: 1]+[k]*[b, eval: 1]")
 _no_common_factor_pat = parse("[k]*([a]+[b])")
@@ -23,9 +23,9 @@ _common_power_base_pat = parse("[a]^[x, eval: 1]*[a]^[y, eval: 1]")
 _no_common_power_base_pat = parse("[a]^([x, eval: 1]+[y, eval: 1])")
 
 
-def simplify(expression: Node):
-    # NOTE: use Node.reduce if you need fast simplification
-    #       running simplify 10x takes 1400 ms whereas running Node.reduce 1000x takes less than 300 ms
+def simplify(expression: Expression):
+    # NOTE: use Expression.reduce if you need fast simplification
+    #       running simplify 10x takes 1400 ms whereas running Expression.reduce 1000x takes less than 300 ms
     #       pattern matching is very expensive
     expression = expression.reduce()
 

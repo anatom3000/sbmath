@@ -1,20 +1,20 @@
 from __future__ import annotations
 
-from sbmath.tree import Node, Value
+from sbmath.expression import Expression, Value
 from sbmath.std import std
 
 sqrt = std.functions["sqrt"]
 
 
-def root_constant(_: Node) -> list[Node]:
+def root_constant(_: Expression) -> list[Expression]:
     return []  # no solution since a ≠ 0
 
 
-def root_linear(a: Node, b: Node) -> list[Node]:
+def root_linear(a: Expression, b: Expression) -> list[Expression]:
     return [-b / a]
 
 
-def root_quadratic(a: Node, b: Node, c: Node) -> list[Node]:
+def root_quadratic(a: Expression, b: Expression, c: Expression) -> list[Expression]:
     delta = b ** 2 - 4 * a * c
 
     if delta.is_evaluable():
@@ -27,7 +27,7 @@ def root_quadratic(a: Node, b: Node, c: Node) -> list[Node]:
     return [(-b - sqrt(delta)) / (2 * a), (-b + sqrt(delta)) / (2 * a)]
 
 
-def find_roots(polynomial: list[Node]) -> list[Node]:
+def find_roots(polynomial: list[Expression]) -> list[Expression]:
     zero = Value(0)
 
     if len(polynomial) == 0:

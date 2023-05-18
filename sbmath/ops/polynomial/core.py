@@ -4,7 +4,7 @@ import copy
 from functools import cached_property
 from itertools import zip_longest
 
-from sbmath.tree import Node, Value
+from sbmath.expression import Expression, Value
 from sbmath.ops.polynomial.monomial import exponents_lexicographic_max, VariableExponents, Monomial, term_div, \
     exponents_mul
 
@@ -12,7 +12,7 @@ zero = Value(0)
 
 
 class Polynomial:
-    def __init__(self, terms: dict[VariableExponents, Node], variables: list[Node]):
+    def __init__(self, terms: dict[VariableExponents, Expression], variables: list[Expression]):
         # terms: [variable_powers: term_coefficient]
         # Ex: ax²y+by+2 => [(2, 1): a, (0, 1): b, (0, 0): 2]
         self.terms = terms
@@ -30,7 +30,7 @@ class Polynomial:
         return leading_exponents
 
     @property
-    def leading_coefficient(self) -> Optional[Node]:
+    def leading_coefficient(self) -> Optional[Expression]:
         if self.is_zero():
             return None
 
@@ -45,14 +45,14 @@ class Polynomial:
         return le, self.terms[le]
 
     @classmethod
-    def constant(cls, value: Node, variables: list[Node]) -> Polynomial:
+    def constant(cls, value: Expression, variables: list[Expression]) -> Polynomial:
         if value == zero:
             return cls.zero(variables)
 
         return cls({(0,) * len(variables): value}, variables)
 
     @classmethod
-    def zero(cls, variables: list[Node]) -> Polynomial:
+    def zero(cls, variables: list[Expression]) -> Polynomial:
         return cls({}, variables)
 
     def is_zero(self) -> bool:
@@ -162,5 +162,5 @@ class Polynomial:
 
     __repr__ = __str__
 
-    def add_variable(self, *new_variables: Node) -> Polynomial:
+    def add_variable(self, *new_variables: Expression) -> Polynomial:
         return Polynomial({(*k, *(0,)*len(new_variables)): v for k, v in self.terms.items()}, self.variables + list(new_variables))

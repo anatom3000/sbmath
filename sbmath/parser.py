@@ -5,7 +5,7 @@ from numbers import Real
 
 import sly
 
-import sbmath.tree as tree
+import sbmath.expression as expression
 
 
 # noinspection PyUnboundLocalVariable,PyUnresolvedReferences
@@ -61,7 +61,7 @@ _ = lambda _: (lambda _: None)  # fake value to make mypy happy
 class Parser(sly.Parser):
     # debugfile = "parser.out"
 
-    def __init__(self, context: tree.Context = None):
+    def __init__(self, context: expression.Context = None):
         super().__init__()
         self.context = context
         self.convert_to_exp = self.context is not None and "exp" in self.context.functions
@@ -130,19 +130,19 @@ class Parser(sly.Parser):
 
     @_('NUMBER')
     def number(self, p):
-        result = tree.Node.from_float(float(p.NUMBER))
+        result = expression.Expression.from_float(float(p.NUMBER))
         result.context = self.context
         return result
 
     @_('IDENT')
     def ident(self, p):
-        result = tree.Variable(p.IDENT)
+        result = expression.Variable(p.IDENT)
         result.context = self.context
         return result
 
     @_('expr EQUALS expr')
     def equality(self, p):
-        result = tree.Equality(p.expr0, p.expr1)
+        result = expression.Equality(p.expr0, p.expr1)
 
         result.context = self.context
         return result
@@ -165,11 +165,11 @@ class Parser(sly.Parser):
 
     @_('LPAREN ident DEFINED_EXPR_SEP equality definednode_approx RPAREN')
     def expr(self, p):
-        return tree.Solution(p.equality, p.ident, approximation=p.definednode_approx[0], inaccuracy=p.definednode_approx[1])
+        return expression.Solution(p.equality, p.ident, approximation=p.definednode_approx[0], inaccuracy=p.definednode_approx[1])
 
     @_('LBRACK IDENT RBRACK')
     def wildcard(self, p):
-        result = tree.Wildcard(p.IDENT)
+        result = expression.Wildcard(p.IDENT)
         result.context = self.context
         return result
 
@@ -187,25 +187,25 @@ class Parser(sly.Parser):
 
     @_("LBRACK IDENT ARG_SEP wc_args RBRACK")
     def wildcard(self, p):
-        result = tree.Wildcard(p.IDENT, **p.wc_args)
+        result = expression.Wildcard(p.IDENT, **p.wc_args)
         result.context = self.context
         return result
 
     @_('number ident POW expr %prec POW')
     def expr(self, p):
-        result = tree.MulAndDiv.mul(p.number, tree.Pow(p.ident, p.expr))
+        result = expression.MulAndDiv.mul(p.number, expression.Pow(p.ident, p.expr))
         result.context = self.context
         return result
 
     @_('IDENT exprblock %prec IMPMUL')
     def expr(self, p):
-        result = tree.FunctionApplication(p.IDENT, p.exprblock)
+        result = expression.FunctionApplication(p.IDENT, p.exprblock)
         result.context = self.context
         return result
 
     @_('wildcard exprblock %prec IMPMUL')
     def expr(self, p):
-        result = tree.FunctionWildcard.from_wildcard(p.wildcard, p.exprblock)
+        result = expression.FunctionWildcard.from_wildcard(p.wildcard, p.exprblock)
         result.context = self.context
         return result
 
@@ -239,8 +239,8 @@ class Parser(sly.Parser):
 
     @_('expr POW expr')
     def expr(self, p):
-        if self.convert_to_exp and isinstance(p.expr0, tree.Variable) and p.expr0.data == 'e':
-            result = tree.FunctionApplication("exp", p.expr1)
+        if self.convert_to_exp and isinstance(p.expr0, expression.Variable) and p.expr0.data == 'e':
+            result = expression.FunctionApplication("exp", p.expr1)
         else:
             result = p.expr0 ** p.expr1
 
@@ -253,15 +253,15 @@ _lexer = Lexer()
 # sentinel value to indicate the user did not provide a context to the parser
 # we cannot use None since it can be passed to mean no context
 ContextNotGiven = object()
-_DEFAULT_CONTEXT = None  # is changed at runtime by `sbmath.tree.context.std` to prevent circular imports
+_DEFAULT_CONTEXT = None  # is changed at runtime by `sbmath.expression.context.std` to prevent circular imports
 
 
-def parse(data: str | Real, context: Optional[tree.Context] = ContextNotGiven) -> Optional[tree.Node]:
+def parse(data: str | Real, context: Optional[expression.Context] = ContextNotGiven) -> Optional[expression.Expression]:
     if context == ContextNotGiven:
         context = _DEFAULT_CONTEXT
 
     if isinstance(data, Real):
-        result = tree.Node.from_float(float(data))
+        result = expression.Expression.from_float(float(data))
         result.context = context
         return result
 
@@ -275,8 +275,8 @@ def parse(data: str | Real, context: Optional[tree.Context] = ContextNotGiven) -
     if result is None:
         return None
 
-    if not isinstance(result, tree.Node):
-        raise ParsingError(f"parser returned {repr(result)} of type {type(result).__name__}, expected type Node")
+    if not isinstance(result, expression.Expression):
+        raise ParsingError(f"parser returned {repr(result)} of type {type(result).__name__}, expected type Expression")
 
     return result
 

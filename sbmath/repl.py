@@ -5,7 +5,7 @@ import traceback
 
 import sbmath
 from sbmath import _utils, parser, std
-from sbmath.tree import Context, NodeFunction, Value
+from sbmath.expression import Context, ExpressionFunction, Value
 from sbmath.ops import diff, expand, simplify
 
 from sbmath._utils import debug
@@ -44,7 +44,7 @@ histfile = '.sbmath_history'
 
 
 def get_test_context() -> Context:
-    f = NodeFunction("f", parser.parse("x"), parser.parse("2x+1"))
+    f = ExpressionFunction("f", parser.parse("x"), parser.parse("2x+1"))
 
     context = sbmath.std()
     context.add_function(f)
@@ -198,14 +198,14 @@ def repl():
 
             elif op == 'subst':
                 try:
-                    old = parse(input(f"{LIGHT_GRAY}Old node: {END}"))
+                    old = parse(input(f"{LIGHT_GRAY}Old expression: {END}"))
                     debug(f" => {old}", flag='repl')
                 except (EOFError, KeyboardInterrupt):
                     break
                 if old is None:
                     continue
                 try:
-                    new = parse(input(f"{LIGHT_GRAY}New node: {END}"))
+                    new = parse(input(f"{LIGHT_GRAY}New expression: {END}"))
                     debug(f" => {new}", flag='repl')
                 except (EOFError, KeyboardInterrupt):
                     break
@@ -242,14 +242,14 @@ def repl():
 
             elif op == 'replace':
                 try:
-                    old = parse(input(f"{LIGHT_GRAY}Old node: {END}"))
+                    old = parse(input(f"{LIGHT_GRAY}Old expression: {END}"))
                     debug(f" => {old}", flag='repl')
                 except (EOFError, KeyboardInterrupt):
                     break
                 if old is None:
                     continue
                 try:
-                    new = parse(input(f"{LIGHT_GRAY}New node: {END}"))
+                    new = parse(input(f"{LIGHT_GRAY}New expression: {END}"))
                     debug(f" => {new}", flag='repl')
                 except (EOFError, KeyboardInterrupt):
                     break

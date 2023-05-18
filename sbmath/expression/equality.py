@@ -2,10 +2,10 @@ from __future__ import annotations
 
 import copy
 
-from sbmath.tree.core import Node, MatchResult
+from sbmath.expression.core import Expression, MatchResult
 
 
-class Equality(Node):
+class Equality(Expression):
 
     def __eq__(self, other):
         if not isinstance(other, Equality):
@@ -14,7 +14,7 @@ class Equality(Node):
         return self.left == other.left and self.right == other.right \
             or self.right == other.left and self.left == other.right
 
-    def reduce(self, depth=-1, *, evaluate: bool = True) -> Node:
+    def reduce(self, depth=-1, *, evaluate: bool = True) -> Expression:
         if depth == 0:
             return self
 
@@ -23,7 +23,7 @@ class Equality(Node):
 
         return type(self)(reduced_left, reduced_right)
 
-    def _match_no_reduce(self, value: Node, state: MatchResult, evaluate: bool, reduce: bool) -> Optional[MatchResult]:
+    def _match_no_reduce(self, value: Expression, state: MatchResult, evaluate: bool, reduce: bool) -> Optional[MatchResult]:
         if not isinstance(value, type(self)):
             return None
 
@@ -39,7 +39,7 @@ class Equality(Node):
         return right_match
 
     # noinspection PyProtectedMember
-    def matches(self, value: Node, state: MatchResult = None, *, evaluate: bool = True, reduce: bool = True) \
+    def matches(self, value: Expression, state: MatchResult = None, *, evaluate: bool = True, reduce: bool = True) \
             -> Optional[MatchResult]:
 
         if state is None:
@@ -84,22 +84,22 @@ class Equality(Node):
         return None
 
     # noinspection PyProtectedMember
-    def _replace_identifiers(self, match_result: MatchResult) -> Node:
+    def _replace_identifiers(self, match_result: MatchResult) -> Expression:
         return type(self)(self.left._replace_identifiers(match_result), self.right._replace_identifiers(match_result))
 
-    def _replace_in_children(self, old_pattern: Node, new_pattern: Node, evaluate: bool, reduce: bool) -> Node:
+    def _replace_in_children(self, old_pattern: Expression, new_pattern: Expression, evaluate: bool, reduce: bool) -> Expression:
         return type(self)(
             self.left.replace(old_pattern, new_pattern, evaluate=evaluate, reduce=reduce),
             self.right.replace(old_pattern, new_pattern, evaluate=evaluate, reduce=reduce)
         )
 
-    def _substitute_in_children(self, pattern: Node, new: Node, evaluate: bool, reduce: bool) -> Node:
+    def _substitute_in_children(self, pattern: Expression, new: Expression, evaluate: bool, reduce: bool) -> Expression:
         return type(self)(
             self.left.substitute(pattern, new, evaluate=evaluate, reduce=reduce),
             self.right.substitute(pattern, new, evaluate=evaluate, reduce=reduce)
         )
 
-    def _apply_on_children(self, pattern: Node, modifier: Callable[[MatchResult], Node], evaluate: bool, reduce: bool) -> Node:
+    def _apply_on_children(self, pattern: Expression, modifier: Callable[[MatchResult], Expression], evaluate: bool, reduce: bool) -> Expression:
         return type(self)(
             self.left.apply_on(pattern, modifier, evaluate=evaluate, reduce=reduce),
             self.right.apply_on(pattern, modifier, evaluate=evaluate, reduce=reduce)
@@ -108,10 +108,10 @@ class Equality(Node):
     def is_evaluable(self) -> bool:
         return False
 
-    def evaluate(self) -> Node:
+    def evaluate(self) -> Expression:
         raise TypeError("cannot evaluate an equality")
 
-    def contains(self, pattern: Node, *, evaluate: bool = True, reduce: bool = True) -> bool:
+    def contains(self, pattern: Expression, *, evaluate: bool = True, reduce: bool = True) -> bool:
         return pattern.matches(self, evaluate=evaluate, reduce=reduce) is not None \
             or self.left.contains(pattern, evaluate=evaluate, reduce=reduce) \
             or self.right.contains(pattern, evaluate=evaluate, reduce=reduce)
@@ -127,7 +127,7 @@ class Equality(Node):
         self.left.context = new
         self.right.context = new
 
-    def __init__(self, left: Node, right: Node):
+    def __init__(self, left: Expression, right: Expression):
         self.left = left
         self.right = right
 

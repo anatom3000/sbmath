@@ -1,16 +1,16 @@
 from __future__ import annotations
 
-from sbmath.tree.core import Node, MatchResult, Variable
+from sbmath.expression.core import Expression, MatchResult, Variable
 
 
-class Solution(Node):
-    def __eq__(self, other: Node) -> bool:
+class Solution(Expression):
+    def __eq__(self, other: Expression) -> bool:
         return isinstance(other, Approximation) and self.definition == other.definition
 
     def is_evaluable(self) -> bool:
         return self.approximation is not None
 
-    def evaluate(self) -> Node:
+    def evaluate(self) -> Expression:
         if self.is_evaluable():
             return self
 
@@ -20,38 +20,38 @@ class Solution(Node):
         return self.approximation
 
     # noinspection PyProtectedMember
-    def _replace_identifiers(self, match_result: MatchResult) -> Node:
+    def _replace_identifiers(self, match_result: MatchResult) -> Expression:
         return Solution(
             self.definition._replace_identifiers(match_result),
             self.variable
         )
 
-    def _replace_in_children(self, old_pattern: Node, new_pattern: Node, evaluate: bool, reduce: bool) -> Node:
+    def _replace_in_children(self, old_pattern: Expression, new_pattern: Expression, evaluate: bool, reduce: bool) -> Expression:
         return Solution(
             self.definition.replace(old_pattern, new_pattern, evaluate=evaluate, reduce=reduce),
             self.variable
         )
 
-    def _substitute_in_children(self, pattern: Node, new: Node, evaluate: bool, reduce: bool) -> Node:
+    def _substitute_in_children(self, pattern: Expression, new: Expression, evaluate: bool, reduce: bool) -> Expression:
         return Solution(
             self.definition.substitute(pattern, new, evaluate=evaluate, reduce=reduce),
             self.variable
         )
 
-    def _apply_on_children(self, pattern: Node, modifier: Callable[[MatchResult], Node], evaluate: bool, reduce: bool) -> Node:
+    def _apply_on_children(self, pattern: Expression, modifier: Callable[[MatchResult], Expression], evaluate: bool, reduce: bool) -> Expression:
         return Solution(
             self.definition.apply_on_children(pattern, modifier, evaluate=evaluate, reduce=reduce),
             self.variable
         )
 
-    def _matches_no_reduce(self, value: Node, state: MatchResult, evaluate: bool, reduce: bool) \
+    def _matches_no_reduce(self, value: Expression, state: MatchResult, evaluate: bool, reduce: bool) \
             -> Optional[MatchResult]:
         if not isinstance(value, Solution):
             return None
 
         return self.definition.matches(value.definition, state, evaluate=evaluate, reduce=reduce)
 
-    def matches(self, value: Node, state: MatchResult = None, *, evaluate: bool = True, reduce: bool = True) \
+    def matches(self, value: Expression, state: MatchResult = None, *, evaluate: bool = True, reduce: bool = True) \
             -> Optional[MatchResult]:
 
         if state is None:
@@ -76,7 +76,7 @@ class Solution(Node):
             self.approximation
         )
 
-    def contains(self, pattern: Node, *, evaluate: bool = True, reduce: bool = True) -> bool:
+    def contains(self, pattern: Expression, *, evaluate: bool = True, reduce: bool = True) -> bool:
         return pattern.matches(self, evaluate=evaluate, reduce=reduce) is not None \
             or self.definition.contains(pattern, evaluate=evaluate, reduce=reduce)
 

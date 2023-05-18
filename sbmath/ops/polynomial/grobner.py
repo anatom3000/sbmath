@@ -200,7 +200,7 @@ def grobner_bases(system: list[Polynomial]) -> list[Polynomial]:
 
 
 if __name__ == '__main__':
-    from sbmath.tree import Variable, Value
+    from sbmath.expression import Variable, Value
 
     x = Variable('x')
     y = Variable('y')

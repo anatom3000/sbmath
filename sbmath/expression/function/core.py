@@ -4,8 +4,8 @@ import copy
 from abc import ABC, abstractmethod
 from typing import Optional
 
-from sbmath.tree.core import Node, Variable, MatchResult, Value, Wildcard
-from sbmath.tree.context import MissingContextError
+from sbmath.expression.core import Expression, Variable, MatchResult, Value, Wildcard
+from sbmath.expression.context import MissingContextError
 from sbmath._utils import debug, inc_indent, dec_indent
 
 
@@ -26,27 +26,27 @@ class Function(ABC):
     def __repr__(self):
         return str(self)
 
-    def __call__(self, argument: Node) -> FunctionApplication:
+    def __call__(self, argument: Expression) -> FunctionApplication:
         return FunctionApplication(self, argument)
 
     @abstractmethod
-    def reduce_func(self, argument: Node, depth: int, evaluate: bool) -> Optional[Node]:
+    def reduce_func(self, argument: Expression, depth: int, evaluate: bool) -> Optional[Expression]:
         pass
 
     @abstractmethod
-    def can_evaluate(self, argument: Node) -> bool:
+    def can_evaluate(self, argument: Expression) -> bool:
         pass
 
     @abstractmethod
-    def evaluate(self, argument: Node) -> Node:
+    def evaluate(self, argument: Expression) -> Expression:
         pass
 
     @classmethod
-    def from_expression(cls, body: expression, parameter: Node, name: str = None) -> Function:
+    def from_expression(cls, body: expression, parameter: Expression, name: str = None) -> Function:
         if name is None:
             name = f"_anonymous_{abs(hash((parameter, body)))}"
 
-        return NodeFunction(name, parameter, body)
+        return ExpressionFunction(name, parameter, body)
 
 
 class PythonFunction(Function):
@@ -59,7 +59,7 @@ class PythonFunction(Function):
     def _derivative(self) -> Function:
         return self._deriv
 
-    def reduce_func(self, argument: Node, depth: int, evaluate: bool) -> Optional[Node]:
+    def reduce_func(self, argument: Expression, depth: int, evaluate: bool) -> Optional[Expression]:
         for pattern, image in self.special_values.items():
             debug(f"{argument = }, {pattern = }, {image = }", flag='reduce_func')
             new = argument.morph(pattern, image, evaluate=evaluate, reduce=False)
@@ -69,13 +69,13 @@ class PythonFunction(Function):
 
         return None
 
-    def can_evaluate(self, argument: Node) -> bool:
+    def can_evaluate(self, argument: Expression) -> bool:
         return argument.is_evaluable()
 
-    def evaluate(self, argument: Node) -> Node:
+    def evaluate(self, argument: Expression) -> Expression:
         return self(argument.evaluate()).reduce()
 
-    def __init__(self, func: Callable[[float], float], special_values: dict[Node, Node] = None, name: str = None):
+    def __init__(self, func: Callable[[float], float], special_values: dict[Expression, Expression] = None, name: str = None):
         self.pyfunc = func
         if name is None:
             name = self.pyfunc.__name__
@@ -83,36 +83,36 @@ class PythonFunction(Function):
         self.special_values = {} if special_values is None else special_values
 
 
-class NodeFunction(Function):
+class ExpressionFunction(Function):
     def __hash__(self):
         return hash((self.name, self.parameter, self.body))
 
     def __eq__(self, other):
         return hash(self) == hash(other)
 
-    def reduce_func(self, argument: Node, depth: int, evaluate: bool) -> Optional[Node]:
+    def reduce_func(self, argument: Expression, depth: int, evaluate: bool) -> Optional[Expression]:
         return self.body.substitute(self.parameter, argument.reduce(depth-1, evaluate=evaluate)).reduce(depth, evaluate=evaluate)
 
-    def can_evaluate(self, argument: Node) -> bool:
+    def can_evaluate(self, argument: Expression) -> bool:
         return argument.is_evaluable()
 
-    def evaluate(self, argument: Node) -> Node:
+    def evaluate(self, argument: Expression) -> Expression:
         return self.body.substitute(self.parameter, argument.evaluate()).evaluate()
 
-    def __init__(self, name: str, parameter: Node, body: Node):
+    def __init__(self, name: str, parameter: Expression, body: Expression):
         self.name = name
         self.parameter = parameter
         self.body = body
 
 
-class FunctionApplication(Node):
+class FunctionApplication(Expression):
     def approximate(self) -> float:
         return self.function.evaluate(self.argument).approximate()
 
-    def evaluate(self) -> Node:
+    def evaluate(self) -> Expression:
         return self.function.evaluate(self.argument)
 
-    def reduce(self, depth=-1, *, evaluate: bool = True) -> Node:
+    def reduce(self, depth=-1, *, evaluate: bool = True) -> Expression:
         if depth == 0:
             return self
 
@@ -131,7 +131,7 @@ class FunctionApplication(Node):
         except MissingContextError:
             return False
 
-    def __eq__(self, other: Node) -> bool:
+    def __eq__(self, other: Expression) -> bool:
         return isinstance(other, FunctionApplication) \
            and self._function == other._function      \
            and self.argument == self.argument
@@ -149,31 +149,31 @@ class FunctionApplication(Node):
 
         return self._function
 
-    def _replace_identifiers(self, match_result: MatchResult) -> Node:
+    def _replace_identifiers(self, match_result: MatchResult) -> Expression:
         return self.change_argument(self.argument._replace_identifiers(match_result))
 
-    def change_argument(self, new_argument: Node):
+    def change_argument(self, new_argument: Expression):
         new = type(self)(self._function, new_argument)
         new.context = self.context
         return new
 
-    def __init__(self, function: str | Function, argument: Node):
+    def __init__(self, function: str | Function, argument: Expression):
         self._function = function
         self.argument = argument
 
-    def _replace_in_children(self, old_pattern: Node, new_pattern: Node, evaluate: bool, reduce: bool) -> Node:
+    def _replace_in_children(self, old_pattern: Expression, new_pattern: Expression, evaluate: bool, reduce: bool) -> Expression:
         return self.change_argument(self.argument.replace(old_pattern, new_pattern, evaluate=evaluate, reduce=reduce))
 
-    def _substitute_in_children(self, pattern: Node, new: Node, evaluate: bool, reduce: bool) -> Node:
+    def _substitute_in_children(self, pattern: Expression, new: Expression, evaluate: bool, reduce: bool) -> Expression:
         return self.change_argument(self.argument.substitute(pattern, new, evaluate=evaluate, reduce=reduce))
 
-    def _apply_on_children(self, pattern: Node, modifier: Callable[[MatchResult], Node], evaluate: bool, reduce: bool) -> Node:
+    def _apply_on_children(self, pattern: Expression, modifier: Callable[[MatchResult], Expression], evaluate: bool, reduce: bool) -> Expression:
         return self.change_argument(self.argument.apply_on(pattern, modifier, evaluate=evaluate, reduce=reduce))
 
-    def contains(self, pattern: Node, *, evaluate: bool = True, reduce: bool = True) -> bool:
+    def contains(self, pattern: Expression, *, evaluate: bool = True, reduce: bool = True) -> bool:
         return pattern.matches(self, evaluate=evaluate, reduce=reduce) is not None or self.argument.contains(pattern, evaluate=evaluate, reduce=reduce)
 
-    def _match_no_reduce(self, value: Node, state: MatchResult, evaluate: bool, reduce: bool) -> Optional[MatchResult]:
+    def _match_no_reduce(self, value: Expression, state: MatchResult, evaluate: bool, reduce: bool) -> Optional[MatchResult]:
         if not isinstance(value, type(self)):
             return None
 
@@ -182,7 +182,7 @@ class FunctionApplication(Node):
 
         return self.argument.matches(value.argument, state, evaluate=evaluate, reduce=reduce)
 
-    def matches(self, value: Node, state: MatchResult = None, *, evaluate: bool = True, reduce: bool = True) -> Optional[MatchResult]:
+    def matches(self, value: Expression, state: MatchResult = None, *, evaluate: bool = True, reduce: bool = True) -> Optional[MatchResult]:
         if state is None:
             state = MatchResult()
 
@@ -228,20 +228,20 @@ class FunctionWildcard(Wildcard):
 
         return hash((self.__class__.__name__, self.name, self.argument, constraints_hashes))
 
-    def change_argument(self, new_argument: Node):
+    def change_argument(self, new_argument: Expression):
         return type(self)(self.name, new_argument, **self.constraints)
 
-    def reduce(self, depth=-1, *, evaluate: bool = True) -> Node:
+    def reduce(self, depth=-1, *, evaluate: bool = True) -> Expression:
         if depth == 0:
             return self
 
         return self.change_argument(self.argument.reduce(depth - 1, evaluate=evaluate))
 
-    def _match_contraints(self, value: Node, evaluate: bool, reduce: bool) -> bool:
+    def _match_contraints(self, value: Expression, evaluate: bool, reduce: bool) -> bool:
         # TODO: function constraints
         return True
 
-    def matches(self, value: Node, state: MatchResult = None, *, evaluate: bool = True, reduce: bool = True) -> Optional[MatchResult]:
+    def matches(self, value: Expression, state: MatchResult = None, *, evaluate: bool = True, reduce: bool = True) -> Optional[MatchResult]:
         if state is None:
             state = MatchResult()
 
@@ -273,7 +273,7 @@ class FunctionWildcard(Wildcard):
 
         return None
 
-    def _replace_identifiers(self, match_result: MatchResult) -> Node:
+    def _replace_identifiers(self, match_result: MatchResult) -> Expression:
         if self.name in match_result.functions_wildcards:
             return FunctionApplication(match_result.functions_wildcards[self.name], self.argument._replace_identifiers(match_result))
         else:
@@ -290,9 +290,9 @@ class FunctionWildcard(Wildcard):
         return f"{func}({self.argument})"
 
     @classmethod
-    def from_wildcard(cls, wildcard: Wildcard, argument: Node):
+    def from_wildcard(cls, wildcard: Wildcard, argument: Expression):
         return cls(wildcard.name, argument, **wildcard.constraints)
 
-    def __init__(self, name: str, argument: Node, **constraints: Node):
+    def __init__(self, name: str, argument: Expression, **constraints: Expression):
         super().__init__(name, **constraints)
         self.argument = argument

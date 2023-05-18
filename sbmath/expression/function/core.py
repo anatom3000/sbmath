@@ -296,3 +296,6 @@ class FunctionWildcard(Wildcard):
     def __init__(self, name: str, argument: Expression, **constraints: Expression):
         super().__init__(name, **constraints)
         self.argument = argument
+
+
+__all__ = ['Function', 'PythonFunction', 'ExpressionFunction', 'FunctionApplication', 'FunctionWildcard']

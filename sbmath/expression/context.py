@@ -45,3 +45,6 @@ class Context:
 
 class MissingContextError(Exception):
     pass
+
+
+__all__ = ['Context', 'MissingContextError']

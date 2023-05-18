@@ -164,3 +164,5 @@ class Polynomial:
 
     def add_variable(self, *new_variables: Expression) -> Polynomial:
         return Polynomial({(*k, *(0,)*len(new_variables)): v for k, v in self.terms.items()}, self.variables + list(new_variables))
+
+__all__ = ['Polynomial']

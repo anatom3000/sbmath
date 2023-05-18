@@ -56,3 +56,5 @@ def find_roots(polynomial: list[Expression]) -> list[Expression]:
 
     # TODO: handle higher degree polynomials
     raise NotImplementedError(f"cannot handle higher degree polynomial {polynomial}")
+
+__all__ = ['find_roots']

@@ -1,6 +1,6 @@
-from sbmath.ops.diff import diff
-from sbmath.ops.expand import expand
-from sbmath.ops.simplify import simplify
-from sbmath.ops.solve import solve
+from sbmath.ops.diff import *
+from sbmath.ops.expand import *
+from sbmath.ops.simplify import *
+from sbmath.ops.solve import *
 
-from sbmath.ops.polynomial import match_polynomial_from_predicate, find_roots
+from sbmath.ops.polynomial import *

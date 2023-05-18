@@ -116,3 +116,4 @@ def _diff_no_reduce(expression: Expression, variable: Variable) -> Expression:
 def diff(expression: Expression, variable: Variable) -> Expression:
     return _diff_no_reduce(expression, variable).reduce()
 
+__all__ = ['diff']

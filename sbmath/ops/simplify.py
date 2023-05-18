@@ -43,6 +43,9 @@ def simplify(expression: Expression):
 
     return expression.reduce()
 
+
+__all__ = ['simplify']
+
 if __name__ == '__main__':
     from time import perf_counter
 

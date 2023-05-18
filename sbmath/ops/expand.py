@@ -24,3 +24,5 @@ def expand(expression: Expression) -> Expression:
 
     # the pattern matching is powerful enough to support more complex expansions
     return expression.replace(_prod_sum_pat, _sum_prod_pat)
+
+__all__ = ['expand']

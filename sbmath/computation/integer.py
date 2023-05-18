@@ -26,3 +26,5 @@ def decompose_sqrt(n: int) -> tuple[int, int]:
             inside *= p
 
     return outside, inside  # we usually write a√b (a is outside, b is inside), hence the order
+
+__all__ = ['prime_factorize', 'decompose_sqrt']

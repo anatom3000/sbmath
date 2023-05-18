@@ -49,3 +49,6 @@ def _solve_no_reduce(equation: Equality, unknown: Variable) -> list[Expression]:
 
 def solve(equation: Equality, unknown: Variable) -> Sequence[Expression]:
     return [simplify(solution) for solution in _solve_no_reduce(equation, unknown)]
+
+
+__all__ = ['solve']

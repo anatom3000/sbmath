@@ -138,3 +138,5 @@ class Equality(Expression):
 
     def __str__(self):
         return f"{self.left} = {self.right}"
+
+__all__ = ['Equality']

@@ -49,3 +49,6 @@ def polynomial_monomial_product(polynomial: sbmath.ops.polynomial.core.Polynomia
     return Polynomial(
         {exponents_mul(pexponents, exponents): pcoefficient for (pexponents, pcoefficient) in polynomial.terms.items()},
         polynomial.variables)
+
+
+__all__ = ['exponents_mul', 'exponents_div', 'exponents_lcm', 'exponents_lexicographic_max', 'term_div', 'polynomial_monomial_product']

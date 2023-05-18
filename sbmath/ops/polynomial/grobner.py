@@ -199,6 +199,8 @@ def grobner_bases(system: list[Polynomial]) -> list[Polynomial]:
     return sorted([system[index] for index in reduced_base_indices], key=lambda p: p.leading_exponents, reverse=True)
 
 
+__all__ = ['grobner_bases']
+
 if __name__ == '__main__':
     from sbmath.expression import Variable, Value
 
@@ -220,3 +222,5 @@ if __name__ == '__main__':
     # print(a.remainder([b]))
 
     # print(exponents_lexicographic_max((1, 0), (1, 0)))
+
+

@@ -205,6 +205,7 @@ class BiMultiDict:
     def values(self) -> Iterable[V]:
         return (self._data[h] for h in self._values_to_keys.keys())
 
+__all__ = ['BiMultiDict', 'debug', 'inc_indent', 'dec_indent']
 
 if __name__ == "__main__":
     a = BiMultiDict()

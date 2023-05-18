@@ -68,6 +68,9 @@ def match_polynomial_from_predicate(value: Expression, predicate: Callable[[Expr
 def match_polynomial(value: Expression, variables: list[Expression]):
     return match_polynomial_from_predicate(value, lambda x: x in variables)
 
+
+__all__ = ['match_polynomial', 'match_polynomial_from_predicate']
+
 if __name__ == '__main__':
     from sbmath.expression import Variable
 

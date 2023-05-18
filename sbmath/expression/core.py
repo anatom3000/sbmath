@@ -1752,3 +1752,6 @@ class MatchResult:
 
 class ReplacingError(Exception):
     pass
+
+
+__all__ = ['Expression', 'Value', 'Variable', 'Wildcard', 'AddAndSub', 'MulAndDiv', 'Pow', 'MatchResult']

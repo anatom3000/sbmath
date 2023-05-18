@@ -50,3 +50,6 @@ class FunctionSqrt(PythonFunction):
         super().__init__(math.sqrt, {
             parse("[arg]^2"): parse("[arg]")
         })
+
+
+__all__ = ['FunctionSqrt']

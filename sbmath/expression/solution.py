@@ -96,3 +96,5 @@ class Solution(Expression):
 
         str_self += ')'
         return str_self.replace("{__internal_defined_value}", f"{self.variable}")
+
+__all__ = ['Solution']

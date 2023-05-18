@@ -338,9 +338,12 @@ def repl():
             else:
                 raise RuntimeError("operation not properly handled")
 
-        except Exception as exc:
+        except Exception:
             print(f"{RED}An error occured during execution of operation:")
             print(f"{traceback.format_exc()}{END}")
             continue
         _utils.DEBUG_INDENT = 0
         print(f" => {YELLOW}{result}{END}")
+
+
+__all__ = ['repl']

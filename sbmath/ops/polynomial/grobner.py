@@ -55,7 +55,7 @@ def update(system: list[Polynomial], possible_base_indices: set[int], critical_p
 
         def lcm_divides(ip):
             # LCM(LM(selected_polynomial), LM(p)) divides LCM(LM(selected_polynomial), LM(g))
-            return monomial_div(lcm,
+            return exponents_div(lcm,
                                 exponents_lcm(selected_leading_exponents, system[ip].leading_exponents))
 
         # HT(selected_polynomial) and HT(g) disjoint: selected_leading_exponents*mg == LCMhg
@@ -86,7 +86,7 @@ def update(system: list[Polynomial], possible_base_indices: set[int], critical_p
         lcm = exponents_lcm(mg1, mg2)
 
         # if HT(selected_polynomial) does not divide lcm(HT(g1), HT(g2))
-        if not monomial_div(lcm, selected_leading_exponents) \
+        if not exponents_div(lcm, selected_leading_exponents) \
                 or exponents_lcm(mg1, selected_leading_exponents) == lcm \
                 or exponents_lcm(mg2, selected_leading_exponents) == lcm:
             new_critical_pairs_indices.add((ig1, ig2))
@@ -206,8 +206,8 @@ if __name__ == '__main__':
     y = Variable('y')
 
     s = [
-        Polynomial({(1, 0): Value(5), (0, 1): Value(2), (0, 0): Value(3)}, [x, y]),
-        Polynomial({(1, 0): Value(1), (0, 1): Value(2), (0, 0): Value(-1)}, [x, y])
+        Polynomial({(5, 2): Value(+1), (0, 1): Value(+2), (0, 0): Value(-4)}, [x, y]),
+        Polynomial({(1, 1): Value(+7), (0, 1): Value(-8), (0, 0): Value(+0)}, [x, y]),
     ]
 
     b = grobner_bases(s)

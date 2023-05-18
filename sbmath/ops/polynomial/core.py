@@ -4,7 +4,7 @@ import copy
 from functools import cached_property
 from itertools import zip_longest
 
-from sbmath.tree import Value
+from sbmath.tree import Node, Value
 from sbmath.ops.polynomial.monomial import exponents_lexicographic_max, VariableExponents, Monomial, term_div, \
     exponents_mul
 
@@ -83,9 +83,12 @@ class Polynomial:
                     divided_exponents, divided_coefficient = divided
                     for term_exponents, term_coefficient in poly.terms.items():
                         exponent_product = exponents_mul(term_exponents, divided_exponents)
-                        coefficient_product = (quotient.terms.get(exponent_product, zero) - divided_coefficient * term_coefficient).reduce()
+                        coefficient_product = (quotient.terms.get(exponent_product,
+                                                                  zero) - divided_coefficient * term_coefficient).reduce()
                         if coefficient_product == zero:
-                            del quotient.terms[exponent_product]
+                            try:
+                                del quotient.terms[exponent_product]
+                            except KeyError: pass
                         else:
                             quotient.terms[exponent_product] = coefficient_product
                     leading_exponents = quotient.leading_exponents
@@ -111,7 +114,7 @@ class Polynomial:
         return self.remainder(other)
 
     def __add__(self, other: Polynomial):
-        if isinstance(other, Polynomial):
+        if not isinstance(other, Polynomial):
             return NotImplemented
 
         if self.variables != other.variables:
@@ -127,6 +130,27 @@ class Polynomial:
             if new_coef != Value(0):
                 terms[exponents] = new_coef
 
+        return Polynomial(terms, self.variables)
+
+    def __sub__(self, other: Polynomial):
+        if not isinstance(other, Polynomial):
+            return NotImplemented
+
+        if self.variables != other.variables:
+            # TODO: handle case when variables don't match
+            return NotImplemented
+
+        terms = {}
+        for exponents in {*self.terms.keys(), *other.terms.keys()}:
+            self_coef = self.terms.get(exponents, zero)
+            other_coef = other.terms.get(exponents, zero)
+
+            new_coef = (self_coef - other_coef).reduce()
+            if new_coef != Value(0):
+                terms[exponents] = new_coef
+
+        return Polynomial(terms, self.variables)
+
     def __eq__(self, other):
         return isinstance(other, Polynomial) and (self.terms, self.variables) == (other.terms, other.variables)
 
@@ -137,3 +161,6 @@ class Polynomial:
         return f"({self.terms}; {self.variables})"
 
     __repr__ = __str__
+
+    def add_variable(self, *new_variables: Node) -> Polynomial:
+        return Polynomial({(*k, *(0,)*len(new_variables)): v for k, v in self.terms.items()}, self.variables + list(new_variables))

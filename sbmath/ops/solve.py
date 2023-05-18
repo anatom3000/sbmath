@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from sbmath.ops.polynomial import match_polynomial, find_roots
+from sbmath.ops.polynomial import match_polynomial_from_predicate, find_roots
 from sbmath.ops.simplify import simplify
 from sbmath.tree import Equality, FunctionWildcard, Wildcard, Value
 from sbmath.std import std
@@ -40,7 +40,7 @@ def _solve_no_reduce(equation: Equality, unknown: Variable) -> list[Node]:
         u, v = m.wildcards["u"], m.wildcards["v"]
         return solve(Equality(u, Value(0)), unknown) + solve(Equality(v, Value(0)), unknown)
 
-    polynomial = match_polynomial(autonomous, unknown)
+    polynomial = match_polynomial_from_predicate(autonomous, unknown)
     if polynomial is not None:
         return find_roots(polynomial)
 

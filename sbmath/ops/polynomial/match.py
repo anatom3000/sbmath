@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from collections.abc import Callable
+
 from sbmath.ops.simplify import simplify
 from sbmath.tree import Node, Wildcard, Value
 
@@ -9,75 +11,68 @@ from sbmath.parser import parse
 from sbmath.ops.polynomial.core import Polynomial
 
 _add_pat = parse("[a]+[b]")
+_mul_pat = parse("[a]*[b]")
+_monomial_pat = parse("[a]^[n, integer_value: 1]")
+_zero = Value(0)
+_one = Value(1)
 
 
-def _match_all(patterns: Iterable[Node], value: Node):
-    m = None
-    for pattern in patterns:
+def _extract_binary_operator(value: Node, pattern: Node) -> list[Node]:
+    terms = []
+    m = pattern.matches(value)
+    while m:
+        terms.append(m.wildcards['a'])
+        value = m.wildcards['b']
         m = pattern.matches(value)
-        if m is None:
-            return None
+    terms.append(value)
 
-    return m
-
-
-# note: returns (variable_index, variable_exponent)
-def _match_partial_monomial(monomial: Node, variables: list[Node]) -> Optional[tuple[int, int]]:
-    exponent = Wildcard("p", integer_value=Value(1))
-    for index, var in enumerate(variables):
-        m = (var ** exponent).matches(monomial)
-        if m:
-            return index, m.wildcards['p'].data
-
-    for index, var in enumerate(variables):
-        m = var.matches(monomial)
-        if m:
-            return index, 1
-
-    return None
+    return terms
 
 
-def _match_monomial(monomial: Node, variables: list[Node]) -> Optional[Polynomial]:
-    for i in range:
-        pass
+def match_polynomial_from_predicate(value: Node, predicate: Callable[[Node], bool]) -> Polynomial:
+    terms = _extract_binary_operator(simplify(value), _add_pat)
+
+    polynomial = Polynomial.zero([])
+    variable_indices: dict[Node, int] = {}
+    for term in terms:
+        coefficient: Node = _one
+        monomial: dict[Node, int] = {}
+
+        factors = _extract_binary_operator(term, _mul_pat)
+        for factor in factors:
+
+            m = _monomial_pat.matches(factor)
+            if m and predicate(m.wildcards['a']):
+                monomial[m.wildcards['a']] = m.wildcards['n'].data
+            elif predicate(factor):
+                monomial[factor] = 1
+            else:
+                coefficient *= factor
+
+        exponents = [0, ] * len(polynomial.variables)
+        for variable, exponent in monomial.items():
+            if variable in polynomial.variables:
+                exponents[variable_indices[variable]] = exponent
+            else:
+                variable_indices[variable] = len(polynomial.variables)
+                polynomial = polynomial.add_variable(variable)
+                exponents.append(exponent)
+
+        exponents = tuple(exponents)
+
+        polynomial.terms[exponents] = (polynomial.terms.get(exponents, _zero) + coefficient).reduce()
+
+    return polynomial
 
 
-# TODO: adapt _match_polynomial to multi-variate polynomials
-def _match_polynomial(polynomial: Node, variables: list[Node]) -> Optional[Polynomial]:
-    m = _add_pat.matches(polynomial)
-    if m:
-        return _match_polynomial(m.wildcards["a"], variables) + _match_polynomial(m.wildcards["b"], variables)
+def match_polynomial(value: Node, variables: list[Node]):
+    return match_polynomial_from_predicate(value, lambda x: x in variables)
 
-    term = Wildcard("k", constant_with=variable) * variable ** Wildcard("n", eval=Value(1))
-    m = term.matches(polynomial)
-    if m:
-        n = m.wildcards["n"].approximate()
-        if not n.is_integer():
-            return None
+if __name__ == '__main__':
+    from sbmath.tree import Variable
 
-        n = int(n)
+    x = parse('x')
 
-        return n * [None] + [m.wildcards["k"]]
+    p = match_polynomial_from_predicate(parse('x**2+x*exp(x)+exp(x)*ln(x)**4+2*ln(x)'), lambda var: var.contains(x))
+    print(p)
 
-    term = Wildcard("k", constant_with=variable) * variable
-    m = term.matches(polynomial)
-    if m:
-        return [None, m.wildcards["k"]]
-
-    term = variable
-    m = term.matches(polynomial)
-    if m:
-        return [None, Value(1)]
-
-    if m:
-        return Polynomial.constant(k, variables)
-
-    return None
-
-
-def match_polynomial(polynomial: Node, variables: list[Node]) -> Optional[list[Node]]:
-    raw_coefficients = _match_polynomial(simplify(polynomial), variables)
-    if raw_coefficients is None:
-        return None
-
-    return [Value(0) if c is None else simplify(c) for c in raw_coefficients]

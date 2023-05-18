@@ -28,7 +28,6 @@ def exponents_lcm(a: VariableExponents, b: VariableExponents) -> Optional[Variab
     return tuple(max(i, j) for i, j in zip(a, b))
 
 
-# equivalent to monomial_lcm
 def exponents_lexicographic_max(a: VariableExponents, b: VariableExponents) -> VariableExponents:
     return a if a >= b else b
 
@@ -41,9 +40,12 @@ def term_div(a: Monomial, b: Monomial) -> Optional[Monomial]:
     return divided_exponents, (a[1] / b[1]).reduce()
 
 
-def polynomial_monomial_product(polynomial: sbmath.ops.polynomial.core.Polynomial, exponents: VariableExponents) -> sbmath.ops.polynomial.core.Polynomial:
+def polynomial_monomial_product(polynomial: sbmath.ops.polynomial.core.Polynomial,
+                                exponents: VariableExponents) -> sbmath.ops.polynomial.core.Polynomial:
     from sbmath.ops.polynomial.core import Polynomial
     # print(f"{polynomial = }")
     # print(f"{exponents = }")
 
-    return Polynomial({exponents_mul(pexponents, exponents): pcoefficient for (pexponents, pcoefficient) in polynomial.terms.items()}, polynomial.variables)
+    return Polynomial(
+        {exponents_mul(pexponents, exponents): pcoefficient for (pexponents, pcoefficient) in polynomial.terms.items()},
+        polynomial.variables)

@@ -233,7 +233,8 @@ class Node(ABC):
     def contains(self, pattern: Node, *, evaluate: bool = True, reduce: bool = True) -> bool:
         pass
 
-    def apply_on(self, pattern: Node, modifier: Callable[[MatchResult], Node], *, evaluate: bool = True, reduce: bool = True) -> Node:
+    def apply_on(self, pattern: Node, modifier: Callable[[MatchResult], Node], *, evaluate: bool = True,
+                 reduce: bool = True) -> Node:
         m = pattern.matches(self, evaluate=evaluate, reduce=reduce)
         if m:
             new = modifier(m)
@@ -243,7 +244,8 @@ class Node(ABC):
         return new._apply_on_children(pattern, modifier, evaluate, reduce)
 
     @abstractmethod
-    def _apply_on_children(self, pattern: Node, modifier: Callable[[MatchResult], Node], evaluate: bool, reduce: bool) -> Node:
+    def _apply_on_children(self, pattern: Node, modifier: Callable[[MatchResult], Node], evaluate: bool,
+                           reduce: bool) -> Node:
         pass
 
 
@@ -282,7 +284,8 @@ class Leaf(Node, ABC):
     def _substitute_in_children(self, pattern: Node, new: Node, evaluate: bool, reduce: bool = True) -> Node:
         return self
 
-    def _apply_on_children(self, pattern: Node, modifier: Callable[[MatchResult], Node], evaluate: bool, reduce: bool) -> Node:
+    def _apply_on_children(self, pattern: Node, modifier: Callable[[MatchResult], Node], evaluate: bool,
+                           reduce: bool) -> Node:
         return self
 
     def __init__(self, data):
@@ -928,10 +931,12 @@ class AdvancedBinOp(Node, ABC):
             inverted_values=(x.substitute(pattern, new, evaluate=evaluate, reduce=reduce) for x in self.inverted_values)
         )
 
-    def _apply_on_children(self, pattern: Node, modifier: Callable[[MatchResult], Node], evaluate: bool, reduce: bool) -> Node:
+    def _apply_on_children(self, pattern: Node, modifier: Callable[[MatchResult], Node], evaluate: bool,
+                           reduce: bool) -> Node:
         return type(self)(
             base_values=(x.apply_on(pattern, modifier, evaluate=evaluate, reduce=reduce) for x in self.base_values),
-            inverted_values=(x.apply_on(pattern, modifier, evaluate=evaluate, reduce=reduce) for x in self.inverted_values)
+            inverted_values=(x.apply_on(pattern, modifier, evaluate=evaluate, reduce=reduce) for x in
+                             self.inverted_values)
         )
 
     def is_evaluable(self) -> bool:
@@ -990,11 +995,7 @@ class AdvancedBinOp(Node, ABC):
         return text
 
     def __hash__(self):
-        # special hash allowing two permutations of the same AdvBinOp to have the same hash
-        base_values_hashes = tuple(sorted(hash(val) for val in self.base_values))
-        inverted_values_hashes = tuple(sorted(hash(val) for val in self.inverted_values))
-
-        return hash((self.__class__.__name__, base_values_hashes, inverted_values_hashes))
+        return hash((self.__class__.__name__, frozenset(self.base_values), frozenset(self.inverted_values)))
 
     @property
     def context(self) -> Optional[Context]:
@@ -1135,7 +1136,8 @@ class BinOp(Node, ABC):
             self.right.substitute(pattern, new, evaluate=evaluate, reduce=reduce)
         )
 
-    def _apply_on_children(self, pattern: Node, modifier: Callable[[MatchResult], Node], evaluate: bool, reduce: bool) -> Node:
+    def _apply_on_children(self, pattern: Node, modifier: Callable[[MatchResult], Node], evaluate: bool,
+                           reduce: bool) -> Node:
         return type(self)(
             self.left.apply_on(pattern, modifier, evaluate=evaluate, reduce=reduce),
             self.right.apply_on(pattern, modifier, evaluate=evaluate, reduce=reduce)
@@ -1176,12 +1178,12 @@ class BinOp(Node, ABC):
 
     @staticmethod
     @abstractmethod
-    def _put_parentheses(value: Node) -> bool:
+    def _put_parentheses(value: Node, right: bool) -> bool:
         pass
 
     def __str__(self):
-        left = f"({self.left})" if self._put_parentheses(self.left) else f"{self.left}"
-        right = f"({self.right})" if self._put_parentheses(self.right) else f"{self.right}"
+        left = f"({self.left})" if self._put_parentheses(self.left, False) else f"{self.left}"
+        right = f"({self.right})" if self._put_parentheses(self.right, True) else f"{self.right}"
 
         return f"{left} {self.name} {right}"
 
@@ -1257,9 +1259,7 @@ class Wildcard(Node):
         return self.name == other.name and self.constraints == other.constraints
 
     def __hash__(self):
-        constraints_hashes = tuple(sorted(hash((k, v)) for k, v in self.constraints.items()))
-
-        return hash((self.__class__.__name__, self.name, constraints_hashes))
+        return hash((self.__class__.__name__, self.name, frozenset(self.constraints.items())))
 
     def contains(self, pattern: Node, *, evaluate: bool = True, reduce: bool = True) -> bool:
         return pattern.matches(self, evaluate=evaluate, reduce=reduce) is not None
@@ -1342,7 +1342,8 @@ class Wildcard(Node):
     def _substitute_in_children(self, pattern: Node, new: Node, evaluate: bool, reduce: bool) -> Node:
         return self
 
-    def _apply_on_children(self, pattern: Node, modifier: Callable[[MatchResult], Node], evaluate: bool, reduce: bool) -> Node:
+    def _apply_on_children(self, pattern: Node, modifier: Callable[[MatchResult], Node], evaluate: bool,
+                           reduce: bool) -> Node:
         return self
 
     def is_evaluable(self) -> bool:
@@ -1473,6 +1474,23 @@ class AddAndSub(AdvancedBinOp):
 
         return result
 
+    def replace(self, old_pattern: Node, new_pattern: Node, *, evaluate: bool = True, reduce: bool = True) -> Node:
+        m = old_pattern.matches(self, evaluate=evaluate, reduce=reduce)
+        if m:
+            new = new_pattern._replace_identifiers(m)
+        else:
+            replacing_hash = hash((old_pattern, new_pattern))
+            extra = Wildcard(f'__internal_{replacing_hash}')
+            old_pattern_with_extra = old_pattern + extra
+            new_pattern_with_extra = new_pattern + extra
+            m = old_pattern_with_extra.matches(self, evaluate=evaluate, reduce=reduce)
+            if m:
+                new = new_pattern_with_extra._replace_identifiers(m)
+            else:
+                new = self
+
+        return new._replace_in_children(old_pattern, new_pattern, evaluate, reduce)
+
     @staticmethod
     def _put_parentheses(value: Node) -> bool:
         # addition/substraction always have the lowest precedence
@@ -1599,6 +1617,23 @@ class MulAndDiv(AdvancedBinOp):
 
         return result
 
+    def replace(self, old_pattern: Node, new_pattern: Node, *, evaluate: bool = True, reduce: bool = True) -> Node:
+        m = old_pattern.matches(self, evaluate=evaluate, reduce=reduce)
+        if m:
+            new = new_pattern._replace_identifiers(m)
+        else:
+            replacing_hash = hash((old_pattern, new_pattern))
+            extra = Wildcard(f'__internal_{replacing_hash}')
+            old_pattern_with_extra = old_pattern * extra
+            new_pattern_with_extra = new_pattern * extra
+            m = old_pattern_with_extra.matches(self, evaluate=evaluate, reduce=reduce)
+            if m:
+                new = new_pattern_with_extra._replace_identifiers(m)
+            else:
+                new = self
+
+        return new._replace_in_children(old_pattern, new_pattern, evaluate, reduce)
+
     @staticmethod
     def _put_parentheses(value: Node) -> bool:
         return isinstance(value, AddAndSub)
@@ -1701,10 +1736,11 @@ class Pow(BinOp):
         return left ** right
 
     @staticmethod
-    def _put_parentheses(value: Node) -> bool:
+    def _put_parentheses(value: Node, right: bool) -> bool:
         return isinstance(value, AddAndSub) \
             or isinstance(value, MulAndDiv) \
-            or (isinstance(value, Value) and value.data < 0)
+            or (isinstance(value, Value) and value.data < 0) \
+            or ((not right) and isinstance(value, Pow))
 
 
 @dataclass
